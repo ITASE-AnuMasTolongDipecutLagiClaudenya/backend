@@ -8,22 +8,24 @@ import (
 )
 
 type Config struct {
-	SupabaseURL string
-	AnonKey     string
-	GeminiKey   string
-	Model       string
-	Port        string
-	Origins     map[string]bool
+	SupabaseURL     string
+	AnonKey         string
+	GeminiKey       string
+	Model           string
+	Port            string
+	TurnstileSecret string
+	Origins         map[string]bool
 }
 
 func Load() Config {
 	loadEnv()
 	c := Config{
-		SupabaseURL: strings.TrimRight(os.Getenv("SUPABASE_URL"), "/"),
-		AnonKey:     os.Getenv("SUPABASE_ANON_KEY"),
-		GeminiKey:   os.Getenv("GEMINI_API_KEY"),
-		Model:       env("GEMINI_MODEL", "gemini-3.8-flash"),
-		Port:        env("PORT", "8080"),
+		SupabaseURL:     strings.TrimRight(os.Getenv("SUPABASE_URL"), "/"),
+		AnonKey:         os.Getenv("SUPABASE_ANON_KEY"),
+		GeminiKey:       os.Getenv("GEMINI_API_KEY"),
+		Model:           env("GEMINI_MODEL", "gemini-3.8-flash"),
+		Port:            env("PORT", "8080"),
+		TurnstileSecret: os.Getenv("TURNSTILE_SECRET_KEY"),
 		Origins: map[string]bool{
 			"http://localhost:5173": true,
 			"http://localhost:8443": true,

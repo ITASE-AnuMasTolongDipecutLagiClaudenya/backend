@@ -15,6 +15,7 @@ func New(cfg config.Config, sb *supabase.Client, h *handler.Handler) *http.Serve
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, _ *http.Request) {
 		httpx.WriteJSON(w, 200, map[string]string{"status": "ok"})
 	})
+	mux.Handle("/api/auth/verify-turnstile", middleware.CORS(cfg.Origins)(http.HandlerFunc(h.VerifyTurnstile)))
 	mux.Handle("/api/", middleware.CORS(cfg.Origins)(middleware.Authenticate(sb)(http.HandlerFunc(h.ServeAPI))))
 	return mux
 }
