@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"log"
 	"math"
 	"net/http"
@@ -37,6 +38,134 @@ func (h *Handler) Dashboard(w http.ResponseWriter, r *http.Request, u middleware
 		}
 	}
 	httpx.WriteJSON(w, 200, map[string]any{"profile": nutrition.First(profile), "meals": meals, "totals": totals, "targets": nutrition.Targets(nutrition.First(profile))})
+}
+
+type calorieBucket struct {
+	Start time.Time
+	End   time.Time
+	Label string
+}
+
+type caloriePoint struct {
+	Label    string  `json:"label"`
+	Calories float64 `json:"calories"`
+}
+
+func calorieBuckets(period string, now time.Time) []calorieBucket {
+	location := time.FixedZone("WIB", 7*60*60)
+	now = now.In(location)
+	months := [...]string{"Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"}
+	weekdays := [...]string{"Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"}
+	var buckets []calorieBucket
+
+	switch period {
+	case "day":
+		monday := time.Date(now.Year(), now.Month(), now.Day()-((int(now.Weekday())+6)%7), 0, 0, 0, 0, location)
+		for i := range 7 {
+			start := monday.AddDate(0, 0, i)
+			month := months[int(start.Month())-1]
+			buckets = append(buckets, calorieBucket{start, start.AddDate(0, 0, 1), fmt.Sprintf("%s, %02d %s", weekdays[i], start.Day(), month[:3])})
+		}
+	case "week":
+		start := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, location)
+		end := start.AddDate(0, 1, 0)
+		for i := range 4 {
+			bucketStart := start.AddDate(0, 0, i*7)
+			bucketEnd := bucketStart.AddDate(0, 0, 7)
+			if i == 3 || bucketEnd.After(end) {
+				bucketEnd = end
+			}
+			buckets = append(buckets, calorieBucket{bucketStart, bucketEnd, fmt.Sprintf("Minggu %d", i+1)})
+		}
+	case "month":
+		for month := range 12 {
+			start := time.Date(now.Year(), time.Month(month+1), 1, 0, 0, 0, 0, location)
+			buckets = append(buckets, calorieBucket{start, start.AddDate(0, 1, 0), months[month]})
+		}
+	case "year":
+		for year := 2027; year <= 2032; year++ {
+			start := time.Date(year, time.January, 1, 0, 0, 0, 0, location)
+			buckets = append(buckets, calorieBucket{start, start.AddDate(1, 0, 0), fmt.Sprint(year)})
+		}
+	}
+	return buckets
+}
+
+func aggregateCalories(rows []map[string]any, buckets []calorieBucket) []caloriePoint {
+	points := make([]caloriePoint, len(buckets))
+	for i, bucket := range buckets {
+		points[i].Label = bucket.Label
+	}
+	for _, row := range rows {
+		createdAt, ok := row["created_at"].(string)
+		if !ok {
+			continue
+		}
+		created, err := time.Parse(time.RFC3339Nano, createdAt)
+		if err != nil {
+			continue
+		}
+		created = created.In(buckets[0].Start.Location())
+		calories, ok := row["calories"].(float64)
+		if !ok {
+			continue
+		}
+		for i, bucket := range buckets {
+			if !created.Before(bucket.Start) && created.Before(bucket.End) {
+				points[i].Calories += calories
+				break
+			}
+		}
+	}
+	return points
+}
+
+func (h *Handler) CalorieHistory(w http.ResponseWriter, r *http.Request, u middleware.Identity) {
+	buckets := calorieBuckets(r.URL.Query().Get("period"), time.Now())
+	if len(buckets) == 0 {
+		httpx.WriteError(w, 400, "Periode grafik kalori tidak valid")
+		return
+	}
+	start, end := buckets[0].Start.UTC().Format(time.RFC3339), buckets[len(buckets)-1].End.UTC().Format(time.RFC3339)
+	filters := fmt.Sprintf("%s&select=created_at,calories&created_at=gte.%s&created_at=lt.%s&order=created_at.asc&limit=10000", supabase.UserFilter(u.ID), url.QueryEscape(start), url.QueryEscape(end))
+	meals, err := h.SB.Query(r.Context(), r.Header.Get("Authorization"), "GET", "meals", filters)
+	if err != nil {
+		log.Printf("calorie history query: %v", err)
+		httpx.WriteError(w, 502, "Gagal membaca riwayat kalori")
+		return
+	}
+	httpx.WriteJSON(w, 200, map[string]any{"data": aggregateCalories(meals, buckets)})
+}
+
+func (h *Handler) FeatureUsage(w http.ResponseWriter, r *http.Request, _ middleware.Identity) {
+	rows, err := h.SB.Query(r.Context(), r.Header.Get("Authorization"), "GET", "rpc/get_feature_usage")
+	if err != nil {
+		log.Printf("feature usage query: %v", err)
+		httpx.WriteError(w, 502, "Gagal membaca statistik fitur; jalankan migrasi database terbaru")
+		return
+	}
+	usage := map[string]int64{"label": 0, "receipt": 0, "chatbot": 0}
+	for _, row := range rows {
+		name, _ := row["feature"].(string)
+		if count, ok := row["request_count"].(float64); ok {
+			switch name {
+			case "scan_label":
+				usage["label"] = int64(count)
+			case "scan_receipt":
+				usage["receipt"] = int64(count)
+			case "chatbot":
+				usage["chatbot"] = int64(count)
+			}
+		}
+	}
+	httpx.WriteJSON(w, 200, usage)
+}
+
+func (h *Handler) recordFeatureUsage(r *http.Request, feature string) {
+	_, err := h.SB.Query(r.Context(), r.Header.Get("Authorization"), "POST", "rpc/record_feature_usage", map[string]string{"feature_name": feature})
+	if err != nil {
+		log.Printf("feature usage record (%s): %v", feature, err)
+	}
 }
 
 func (h *Handler) ListMeals(w http.ResponseWriter, r *http.Request, u middleware.Identity) {

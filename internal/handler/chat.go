@@ -119,5 +119,8 @@ func (h *Handler) PostChat(w http.ResponseWriter, r *http.Request, u middleware.
 		httpx.WriteError(w, 502, "Respons dibuat, tetapi gagal menyimpan riwayat chat")
 		return
 	}
+	if !strings.HasPrefix(body.Message, "Saya baru memindai makanan berikut:") {
+		h.recordFeatureUsage(r, "chatbot")
+	}
 	httpx.WriteJSON(w, 200, map[string]string{"answer": answer})
 }

@@ -18,6 +18,10 @@ func (h *Handler) ServeAPI(w http.ResponseWriter, r *http.Request) {
 		h.CalculateTargets(w, r)
 	case r.URL.Path == "/api/dashboard" && r.Method == "GET":
 		h.Dashboard(w, r, u)
+	case r.URL.Path == "/api/calories" && r.Method == "GET":
+		h.CalorieHistory(w, r, u)
+	case r.URL.Path == "/api/features" && r.Method == "GET":
+		h.FeatureUsage(w, r, u)
 	case r.URL.Path == "/api/meals" && r.Method == "GET":
 		h.ListMeals(w, r, u)
 	case r.URL.Path == "/api/meals" && r.Method == "POST":

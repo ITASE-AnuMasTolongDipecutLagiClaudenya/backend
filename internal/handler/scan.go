@@ -70,6 +70,7 @@ func (h *Handler) Scan(w http.ResponseWriter, r *http.Request, u middleware.Iden
 		httpx.WriteError(w, 502, "Pemindaian gagal: "+err.Error())
 		return
 	}
+	h.recordFeatureUsage(r, "scan_"+mode)
 	httpx.WriteJSON(w, 200, map[string]any{
 		"mode":    mode,
 		"items":   nutrition.NormalizeScanItems(result),
