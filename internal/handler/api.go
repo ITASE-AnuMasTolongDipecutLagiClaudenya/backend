@@ -14,6 +14,8 @@ func (h *Handler) ServeAPI(w http.ResponseWriter, r *http.Request) {
 		h.GetProfile(w, r, u)
 	case r.URL.Path == "/api/profile" && r.Method == "PUT":
 		h.PutProfile(w, r, u)
+	case r.URL.Path == "/api/targets" && r.Method == "POST":
+		h.CalculateTargets(w, r)
 	case r.URL.Path == "/api/dashboard" && r.Method == "GET":
 		h.Dashboard(w, r, u)
 	case r.URL.Path == "/api/meals" && r.Method == "GET":

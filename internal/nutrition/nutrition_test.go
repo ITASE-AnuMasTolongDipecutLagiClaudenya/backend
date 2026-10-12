@@ -2,13 +2,88 @@ package nutrition
 
 import "testing"
 
-func TestTargetsUsesProfileAndGoal(t *testing.T) {
+func TestTargetsPersonalizeAKGByBodyProfile(t *testing.T) {
 	targets := Targets(map[string]any{
 		"age": 30, "gender": "Pria", "weight_kg": 70.0, "height_cm": 175.0,
 		"activity": "Sedang", "goal": "Menurunkan berat badan",
 	})
-	if targets["calories"] != 2256 || targets["protein_g"] != 112 || targets["fat_g"] != 63 || targets["carbs_g"] != 311 {
+	if targets["calories"] != 2517 || targets["protein_g"] != 75.8 || targets["fat_g"] != 81.7 || targets["carbs_g"] != 484.2 {
 		t.Fatalf("unexpected targets: %#v", targets)
+	}
+
+	reference := Targets(map[string]any{
+		"age": 30, "gender": "Pria", "weight_kg": 60.0, "height_cm": 166.0,
+		"activity": "Sedang", "goal": "Menurunkan berat badan",
+	})
+	if reference["calories"] != 2250 || reference["protein_g"] != 65 || reference["fat_g"] != 70 || reference["carbs_g"] != 415 {
+		t.Fatalf("unexpected reference targets: %#v", reference)
+	}
+
+	lowActivity := Targets(map[string]any{
+		"age": 30, "gender": "Pria", "weight_kg": 60.0, "height_cm": 166.0,
+		"activity": "Minim gerak", "goal": "Menurunkan berat badan",
+	})
+	if lowActivity["calories"] >= reference["calories"] {
+		t.Fatalf("activity should adjust estimated energy: %#v", lowActivity)
+	}
+}
+
+func TestTargetsUsesOfficialPregnancyAdditionsWithoutWeightLossAdjustment(t *testing.T) {
+	targets := Targets(map[string]any{
+		"age": 25, "gender": "Wanita", "pregnancy_status": "Trimester 2",
+		"goal": "Menurunkan berat badan",
+	})
+	if targets["calories"] != 2550 || targets["protein_g"] != 70 || targets["fat_g"] != 67.3 || targets["carbs_g"] != 400 {
+		t.Fatalf("unexpected pregnancy targets: %#v", targets)
+	}
+}
+
+func TestTargetsUseDailySugarAndAgeAdjustedSodiumLimits(t *testing.T) {
+	adult := Targets(map[string]any{"age": 30, "gender": "Pria"})
+	if adult["sugar_g"] != 50 || adult["sodium_mg"] != 2000 {
+		t.Fatalf("unexpected adult sugar/sodium targets: %#v", adult)
+	}
+
+	teen := Targets(map[string]any{"age": 14, "gender": "Pria"})
+	if teen["sugar_g"] != 50 || teen["sodium_mg"] != 1811 {
+		t.Fatalf("unexpected teen sugar/sodium targets: %#v", teen)
+	}
+}
+
+func TestTargetsReadSavedProfileTargets(t *testing.T) {
+	profile := map[string]any{
+		"age": 30, "gender": "Pria", "target_calories": 2200.0,
+		"target_protein_g": 80.0, "target_carbs_g": 250.0,
+		"target_fat_g": 70.0, "target_sugar_g": 40.0, "target_sodium_mg": 1800.0,
+	}
+	targets := Targets(profile)
+	if targets["calories"] != 2200 || targets["protein_g"] != 80 || targets["carbs_g"] != 250 || targets["fat_g"] != 70 || targets["sugar_g"] != 40 || targets["sodium_mg"] != 1800 {
+		t.Fatalf("expected saved profile targets, got %#v", targets)
+	}
+}
+
+func TestGymProteinTargetUsesExerciseGuideline(t *testing.T) {
+	profile := map[string]any{
+		"age": 30, "gender": "Pria", "weight_kg": 70.0, "height_cm": 175.0,
+		"activity": "Sedang", "goal": "Menjaga berat badan", "is_gym": true,
+	}
+	if got := Targets(profile)["protein_g"]; got != 112 {
+		t.Fatalf("gym protein target = %v, want 112 g (1.6 g/kg)", got)
+	}
+	profile["is_gym"] = false
+	if got := Targets(profile)["protein_g"]; got == 112 {
+		t.Fatalf("non-gym protein target unexpectedly uses gym guideline: %v", got)
+	}
+}
+
+func TestPregnancyProteinAdditionTakesPrecedenceOverGymMultiplier(t *testing.T) {
+	profile := map[string]any{
+		"age": 30, "gender": "Wanita", "weight_kg": 60.0, "height_cm": 160.0,
+		"activity": "Sedang", "goal": "Menjaga berat badan",
+		"pregnancy_status": "Trimester 2", "is_gym": true,
+	}
+	if got := Targets(profile)["protein_g"]; got != 74.3 {
+		t.Fatalf("pregnancy protein target = %v, want 74.3 g from AKG", got)
 	}
 }
 

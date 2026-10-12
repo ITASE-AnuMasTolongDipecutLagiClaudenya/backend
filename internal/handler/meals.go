@@ -28,9 +28,9 @@ func (h *Handler) Dashboard(w http.ResponseWriter, r *http.Request, u middleware
 		httpx.WriteError(w, 502, "Gagal membaca catatan makan")
 		return
 	}
-	totals := map[string]float64{"calories": 0, "protein_g": 0, "carbs_g": 0, "fat_g": 0}
+	totals := map[string]float64{"calories": 0, "protein_g": 0, "carbs_g": 0, "fat_g": 0, "sugar_g": 0, "sodium_mg": 0}
 	for _, meal := range meals {
-		for _, k := range []string{"calories", "protein_g", "carbs_g", "fat_g"} {
+		for _, k := range []string{"calories", "protein_g", "carbs_g", "fat_g", "sugar_g", "sodium_mg"} {
 			if n, ok := meal[k].(float64); ok {
 				totals[k] += n
 			}

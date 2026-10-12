@@ -7,6 +7,7 @@ import (
 
 	"nutrily/backend/internal/httpx"
 	"nutrily/backend/internal/middleware"
+	"nutrily/backend/internal/nutrition"
 	"nutrily/backend/internal/supabase"
 )
 
@@ -52,7 +53,11 @@ func (h *Handler) PutProfile(w http.ResponseWriter, r *http.Request, u middlewar
 		httpx.WriteError(w, 400, "Aktivitas tidak valid")
 		return
 	}
-	if goal, ok := body["goal"].(string); !ok || !oneOf(goal, "Menurunkan berat badan", "Menambah berat badan") {
+	if _, ok := body["is_gym"].(bool); !ok {
+		httpx.WriteError(w, 400, "Pilih apakah kamu rutin gym")
+		return
+	}
+	if goal, ok := body["goal"].(string); !ok || !oneOf(goal, "Menurunkan berat badan", "Menjaga berat badan", "Menambah berat badan") {
 		httpx.WriteError(w, 400, "Target tidak valid")
 		return
 	}
@@ -64,7 +69,7 @@ func (h *Handler) PutProfile(w http.ResponseWriter, r *http.Request, u middlewar
 		httpx.WriteError(w, 400, "Status kehamilan tidak valid")
 		return
 	}
-	allowed := map[string]bool{"user_id": true, "age": true, "gender": true, "pregnancy_status": true, "weight_kg": true, "height_cm": true, "activity": true, "goal": true, "full_name": true}
+	allowed := map[string]bool{"user_id": true, "age": true, "gender": true, "pregnancy_status": true, "weight_kg": true, "height_cm": true, "activity": true, "goal": true, "full_name": true, "is_gym": true}
 	for key := range body {
 		if !allowed[key] {
 			httpx.WriteError(w, 400, "Field profil tidak dikenal: "+key)
@@ -76,6 +81,9 @@ func (h *Handler) PutProfile(w http.ResponseWriter, r *http.Request, u middlewar
 		body["full_name"] = strings.TrimSpace(name)
 	} else {
 		body["full_name"] = ""
+	}
+	for key, value := range nutrition.Targets(body) {
+		body["target_"+key] = value
 	}
 	rows, err := h.SB.Query(r.Context(), r.Header.Get("Authorization"), "POST", "profiles?on_conflict=user_id", body)
 	if err != nil || len(rows) == 0 {
