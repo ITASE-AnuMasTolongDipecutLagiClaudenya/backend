@@ -41,7 +41,7 @@ func NormalizeCategory(v any) string {
 	}
 }
 
-func NormalizeScanItems(result map[string]any) []map[string]any {
+func NormalizeScanItems(result map[string]any, mode string) []map[string]any {
 	items := []map[string]any{}
 	collect := func(entry any) {
 		item, ok := entry.(map[string]any)
@@ -54,13 +54,15 @@ func NormalizeScanItems(result map[string]any) []map[string]any {
 			return
 		}
 		item["name"] = name
-		if c, ok := item["category"].(string); ok && strings.TrimSpace(c) != "" {
-			c = NormalizeCategory(c)
-			if c == "makanan" || c == "minuman" || c == "buah" {
-				item["category"] = c
-			} else {
-				delete(item, "category")
-			}
+		category, _ := item["category"].(string)
+		category = NormalizeCategory(category)
+		if mode == "receipt" && category != "makanan" && category != "minuman" && category != "buah" {
+			return
+		}
+		if category == "makanan" || category == "minuman" || category == "buah" {
+			item["category"] = category
+		} else {
+			delete(item, "category")
 		}
 		for _, k := range []string{"calories", "protein_g", "carbs_g", "fat_g", "sugar_g", "sodium_mg"} {
 			item[k] = ToFloatOrNil(item[k])
@@ -85,7 +87,7 @@ func NormalizeScanItems(result map[string]any) []map[string]any {
 			item[k] = v
 		}
 	}
-	if name, _ := item["name"].(string); strings.TrimSpace(name) != "" {
+	if name, _ := item["name"].(string); strings.TrimSpace(name) != "" && mode != "receipt" {
 		for _, k := range []string{"calories", "protein_g", "carbs_g", "fat_g", "sugar_g", "sodium_mg"} {
 			item[k] = ToFloatOrNil(item[k])
 		}

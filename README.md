@@ -4,7 +4,7 @@ API Go untuk Nutrily; frontend React terpisah di `../nutrily`.
 
 ## Menjalankan
 
-1. Salin `.env.example` menjadi `.env`; isi URL dan anon key Supabase serta `GEMINI_API_KEY` dari Google AI Studio. Set `TURNSTILE_SECRET_KEY` ke secret Cloudflare Turnstile.
+1. Salin `.env.example` menjadi `.env`; isi URL dan anon key Supabase. AI memakai Gemini utama bila `GEMINI_API_KEY` tersedia, lalu otomatis fallback ke OpenRouter bila gagal. Masukkan `OPENROUTER_API_KEY` untuk mengaktifkan model gratis `google/gemma-4-31b-it:free`; `GEMINI_API_KEY` boleh kosong. Set `TURNSTILE_SECRET_KEY` ke secret Cloudflare Turnstile.
 2. Jalankan `schema.sql` melalui Supabase SQL Editor. Untuk database lama, jalankan `migrations/002_feature_usage.sql` (serta `migrations/001_add_is_gym.sql` bila diperlukan).
 3. Jalankan `go mod tidy`, kemudian `go run ./cmd/api`.
 

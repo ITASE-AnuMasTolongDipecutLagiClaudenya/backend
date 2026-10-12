@@ -17,11 +17,11 @@ import (
 
 const labelPrompt = "Baca label gizi pada gambar. Balas HANYA JSON valid tanpa markdown: {\"name\":..., \"serving_size\":..., \"calories\":..., \"protein_g\":..., \"carbs_g\":..., \"fat_g\":..., \"sugar_g\":..., \"sodium_mg\":..., \"note\":...}. Gunakan angka; null untuk nilai tidak terbaca. Jangan mengarang."
 
-const receiptPrompt = "Baca seluruh struk, termasuk bagian atas dan bawah. Periksa setiap baris barang satu per satu: OCR nama barang seperti tertulis, termasuk nama merek, singkatan, dan ejaan yang kurang jelas. Masukkan setiap baris yang mungkin merupakan makanan, minuman, atau buah untuk dikonsumsi, termasuk barang kemasan, snack, roti, mi, susu, kopi, teh, jus, air minum, dan buah. Jangan buang barang hanya karena nama/merek tidak dikenal atau teks struk disingkat; jika ragu apakah barang dapat dikonsumsi, tetap masukkan dan beri note \"Nama perlu diverifikasi\". Jangan gabungkan baris barang yang berbeda. Abaikan hanya baris yang jelas bukan barang konsumsi serta pajak, diskon, subtotal, total, kembalian, metode pembayaran, biaya layanan, dan kantong belanja. Jika jumlah N terbaca (misal 2x), kalikan semua angka gizi dengan N dan tulis serving_size seperti \"2x ...\"; jangan buat field jumlah terpisah. Estimasi gizi per sajian standar Indonesia; jangan menghilangkan barang karena nilai gizinya tidak diketahui, gunakan null untuk nilai yang tidak dapat diestimasi. Balas HANYA JSON valid tanpa markdown: {\"items\": [{\"name\":..., \"category\": \"makanan|minuman|buah\", \"serving_size\":..., \"calories\":..., \"protein_g\":..., \"carbs_g\":..., \"fat_g\":..., \"sugar_g\":..., \"sodium_mg\":..., \"note\":...}]}. Satu objek untuk setiap baris barang konsumsi. Jika tidak ada, balas {\"items\": []}. Maksimal 50 barang."
+const receiptPrompt = "Baca seluruh struk dan periksa tiap baris barang. Ambil HANYA makanan, minuman, atau buah yang dapat dikonsumsi; kecualikan barang lain meski nama/mereknya tidak dikenal atau ambigu. Jangan gabungkan baris barang. Abaikan pajak, diskon, subtotal, total, kembalian, pembayaran, biaya layanan, dan kantong belanja. Jika jumlah N terbaca (misal 2x), kalikan semua angka gizi dengan N dan tulis serving_size seperti \"2x ...\". Estimasi gizi per sajian standar Indonesia; gunakan null untuk nilai yang tidak dapat diestimasi, jangan mengarang. Set category wajib ke tepat salah satu: makanan, minuman, buah. Balas HANYA JSON valid tanpa markdown: {\"items\": [{\"name\":..., \"category\": \"makanan|minuman|buah\", \"serving_size\":..., \"calories\":..., \"protein_g\":..., \"carbs_g\":..., \"fat_g\":..., \"sugar_g\":..., \"sodium_mg\":..., \"note\":...}]}. Satu objek per baris konsumsi. Jika tidak ada, balas {\"items\": []}. Maksimal 50 barang."
 
 func (h *Handler) Scan(w http.ResponseWriter, r *http.Request, u middleware.Identity) {
-	if h.AI.APIKey == "" {
-		httpx.WriteError(w, 503, "Pemindaian memerlukan GEMINI_API_KEY di backend")
+	if !h.HasAI() {
+		httpx.WriteError(w, 503, "Pemindaian memerlukan GEMINI_API_KEY atau OPENROUTER_API_KEY di backend")
 		return
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, 9<<20)
@@ -65,7 +65,7 @@ func (h *Handler) Scan(w http.ResponseWriter, r *http.Request, u middleware.Iden
 		map[string]string{"text": prompt},
 		map[string]any{"inlineData": map[string]string{"mimeType": contentType, "data": base64.StdEncoding.EncodeToString(data)}},
 	}}}
-	result, err := h.AI.Generate(r.Context(), "", contents, true)
+	result, err := h.GenerateAI(r.Context(), "", contents, true)
 	if err != nil {
 		httpx.WriteError(w, 502, "Pemindaian gagal: "+err.Error())
 		return
@@ -73,7 +73,7 @@ func (h *Handler) Scan(w http.ResponseWriter, r *http.Request, u middleware.Iden
 	h.recordFeatureUsage(r, "scan_"+mode)
 	httpx.WriteJSON(w, 200, map[string]any{
 		"mode":    mode,
-		"items":   nutrition.NormalizeScanItems(result),
+		"items":   nutrition.NormalizeScanItems(result, mode),
 		"user_id": u.ID,
 	})
 }

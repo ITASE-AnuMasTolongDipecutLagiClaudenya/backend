@@ -12,6 +12,8 @@ type Config struct {
 	AnonKey         string
 	GeminiKey       string
 	Model           string
+	OpenRouterKey   string
+	OpenRouterModel string
 	Port            string
 	TurnstileSecret string
 	Origins         map[string]bool
@@ -24,6 +26,8 @@ func Load() Config {
 		AnonKey:         os.Getenv("SUPABASE_ANON_KEY"),
 		GeminiKey:       os.Getenv("GEMINI_API_KEY"),
 		Model:           env("GEMINI_MODEL", "gemini-3.8-flash"),
+		OpenRouterKey:   os.Getenv("OPENROUTER_API_KEY"),
+		OpenRouterModel: env("OPENROUTER_MODEL", "google/gemma-4-31b-it:free"),
 		Port:            env("PORT", "8080"),
 		TurnstileSecret: os.Getenv("TURNSTILE_SECRET_KEY"),
 		Origins: map[string]bool{

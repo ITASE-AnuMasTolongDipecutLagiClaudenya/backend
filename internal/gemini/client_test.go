@@ -33,7 +33,7 @@ func TestStripFence(t *testing.T) {
 	}
 }
 
-func TestGenerateRetriesServiceUnavailable(t *testing.T) {
+func TestGenerateRetriesTransientProviderErrors(t *testing.T) {
 	calls := 0
 	c := Client{
 		Model:  "test-model",
@@ -42,15 +42,15 @@ func TestGenerateRetriesServiceUnavailable(t *testing.T) {
 			calls++
 			body := `{"candidates":[{"content":{"parts":[{"text":"ok"}]}}]}`
 			status := http.StatusOK
-			if calls == 1 {
-				status = http.StatusServiceUnavailable
+			if calls < 3 {
+				status = []int{http.StatusTooManyRequests, http.StatusServiceUnavailable}[calls-1]
 				body = `{"error":{"status":"UNAVAILABLE"}}`
 			}
 			return &http.Response{StatusCode: status, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header), Request: r}, nil
 		})},
 	}
 	result, err := c.Generate(context.Background(), "", []any{}, false)
-	if err != nil || result["answer"] != "ok" || calls != 2 {
+	if err != nil || result["answer"] != "ok" || calls != 3 {
 		t.Fatalf("Generate() = %#v, %v after %d calls", result, err, calls)
 	}
 }

@@ -62,8 +62,8 @@ func (h *Handler) ListConversations(w http.ResponseWriter, r *http.Request, u mi
 }
 
 func (h *Handler) PostChat(w http.ResponseWriter, r *http.Request, u middleware.Identity) {
-	if h.AI.APIKey == "" {
-		httpx.WriteError(w, 503, "Chat AI memerlukan GEMINI_API_KEY di backend")
+	if !h.HasAI() {
+		httpx.WriteError(w, 503, "Chat memerlukan GEMINI_API_KEY atau OPENROUTER_API_KEY di backend")
 		return
 	}
 	var body struct {
@@ -104,7 +104,7 @@ func (h *Handler) PostChat(w http.ResponseWriter, r *http.Request, u middleware.
 		messages = append(messages, map[string]any{"role": role, "parts": []any{map[string]any{"text": history[i]["content"]}}})
 	}
 	messages = append(messages, map[string]any{"role": "user", "parts": []any{map[string]string{"text": body.Message}}})
-	response, err := h.AI.Generate(r.Context(), systemInstruction, messages, false)
+	response, err := h.GenerateAI(r.Context(), systemInstruction, messages, false)
 	if err != nil {
 		httpx.WriteError(w, 502, "Asisten AI gagal merespons")
 		return

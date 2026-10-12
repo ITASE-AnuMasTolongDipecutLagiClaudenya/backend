@@ -40,7 +40,7 @@ func (c *Client) Generate(ctx context.Context, systemInstruction string, content
 		if err != nil {
 			return nil, err
 		}
-		if resp.StatusCode == http.StatusServiceUnavailable && attempt < 2 {
+		if (resp.StatusCode == http.StatusServiceUnavailable || resp.StatusCode == http.StatusTooManyRequests) && attempt < 2 {
 			_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 4096))
 			_ = resp.Body.Close()
 			timer := time.NewTimer(time.Duration(1<<attempt) * 500 * time.Millisecond)
