@@ -77,6 +77,7 @@ drop policy if exists "Users read own meals" on public.meals;
 drop policy if exists "Users insert own meals" on public.meals;
 drop policy if exists "Users read own chat" on public.chat_messages;
 drop policy if exists "Users insert own chat" on public.chat_messages;
+drop policy if exists "Users delete own chat" on public.chat_messages;
 drop policy if exists "Users read own feature usage" on public.feature_usage;
 drop policy if exists "Service manages feature usage" on public.feature_usage;
 
@@ -87,10 +88,12 @@ create policy "Users read own meals" on public.meals for select to authenticated
 create policy "Users insert own meals" on public.meals for insert to authenticated with check (auth.uid() = user_id);
 create policy "Users read own chat" on public.chat_messages for select to authenticated using (auth.uid() = user_id);
 create policy "Users insert own chat" on public.chat_messages for insert to authenticated with check (auth.uid() = user_id);
+create policy "Users delete own chat" on public.chat_messages for delete to authenticated using (auth.uid() = user_id);
 create policy "Users read own feature usage" on public.feature_usage for select to authenticated using (auth.uid() = user_id);
 
 grant select, insert, update on public.profiles to authenticated;
 grant select, insert on public.meals, public.chat_messages to authenticated;
+grant delete on public.chat_messages to authenticated;
 grant select on public.feature_usage to authenticated;
 grant usage, select on sequence public.meals_id_seq, public.chat_messages_id_seq to authenticated;
 grant usage on schema public to authenticated;

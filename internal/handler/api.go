@@ -32,6 +32,8 @@ func (h *Handler) ServeAPI(w http.ResponseWriter, r *http.Request) {
 		h.GetChat(w, r, u)
 	case r.URL.Path == "/api/conversations" && r.Method == "GET":
 		h.ListConversations(w, r, u)
+	case r.URL.Path == "/api/conversations" && r.Method == "DELETE":
+		h.DeleteConversation(w, r, u)
 	case r.URL.Path == "/api/chat" && r.Method == "POST":
 		h.PostChat(w, r, u)
 	default:
