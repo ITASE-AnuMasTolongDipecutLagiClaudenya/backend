@@ -6,6 +6,7 @@ import (
 	"log"
 
 	"nutrily/backend/internal/gemini"
+	"nutrily/backend/internal/nutrition"
 	"nutrily/backend/internal/openrouter"
 	"nutrily/backend/internal/supabase"
 	"nutrily/backend/internal/turnstile"
@@ -18,10 +19,11 @@ type Handler struct {
 	AI         *gemini.Client
 	OpenRouter *openrouter.Client
 	TS         *turnstile.Client
+	Catalog    *nutrition.Catalog
 }
 
-func New(sb *supabase.Client, ai *gemini.Client, openRouter *openrouter.Client, ts *turnstile.Client) *Handler {
-	return &Handler{SB: sb, AI: ai, OpenRouter: openRouter, TS: ts}
+func New(sb *supabase.Client, ai *gemini.Client, openRouter *openrouter.Client, ts *turnstile.Client, catalog *nutrition.Catalog) *Handler {
+	return &Handler{SB: sb, AI: ai, OpenRouter: openRouter, TS: ts, Catalog: catalog}
 }
 
 func (h *Handler) GenerateAI(ctx context.Context, systemInstruction string, contents []any, jsonMode bool) (map[string]any, error) {

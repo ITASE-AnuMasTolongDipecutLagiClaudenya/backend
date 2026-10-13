@@ -3,6 +3,7 @@ package handler
 import (
 	"bytes"
 	"encoding/base64"
+	"encoding/json"
 	"image"
 	_ "image/jpeg"
 	_ "image/png"
@@ -15,10 +16,17 @@ import (
 	"nutrily/backend/internal/nutrition"
 )
 
-const labelPrompt = "Baca label gizi pada gambar. Balas HANYA JSON valid tanpa markdown: {\"name\":..., \"serving_size\":..., \"calories\":..., \"protein_g\":..., \"carbs_g\":..., \"fat_g\":..., \"sugar_g\":..., \"sodium_mg\":..., \"note\":...}. Gunakan angka; null untuk nilai tidak terbaca. Jangan mengarang."
+const labelPrompt = `Identifikasi persis produk pada gambar label gizi. Baca nama produk, merek, barcode yang terlihat, dan takaran saji beserta gram/ml bila tertulis. Jangan menyalin atau menghitung angka gizi dari label. Jangan menebak identitas/barcode. Balas hanya JSON: {"items":[{"name":"...","manufacturer":"...","barcode":"...","serving_size":"...","portion_g":100,"portion_ml":null,"category":"makanan|minuman|buah"}]}. Gunakan null bila nilai tidak terbaca.`
 
-const receiptPrompt = "Baca seluruh struk dan periksa tiap baris barang. Ambil HANYA makanan, minuman, atau buah yang dapat dikonsumsi; kecualikan barang lain meski nama/mereknya tidak dikenal atau ambigu. Jangan gabungkan baris barang. Abaikan pajak, diskon, subtotal, total, kembalian, pembayaran, biaya layanan, dan kantong belanja. Jika jumlah N terbaca (misal 2x), kalikan semua angka gizi dengan N dan tulis serving_size seperti \"2x ...\". Estimasi gizi per sajian standar Indonesia; gunakan null untuk nilai yang tidak dapat diestimasi, jangan mengarang. Set category wajib ke tepat salah satu: makanan, minuman, buah. Balas HANYA JSON valid tanpa markdown: {\"items\": [{\"name\":..., \"category\": \"makanan|minuman|buah\", \"serving_size\":..., \"calories\":..., \"protein_g\":..., \"carbs_g\":..., \"fat_g\":..., \"sugar_g\":..., \"sodium_mg\":..., \"note\":...}]}. Satu objek per baris konsumsi. Jika tidak ada, balas {\"items\": []}. Maksimal 50 barang."
+const receiptPrompt = `Baca struk dan identifikasi setiap baris makanan/minuman/buah yang bisa dikonsumsi. Jangan gabungkan item; abaikan pajak, diskon, subtotal, total, pembayaran, layanan, dan barang non-makanan. Ambil nama, merek/varian jika tercantum, jumlah pembelian, dan porsi/berat hanya jika tercantum. Jangan menebak nilai gizi. Balas hanya JSON: {"items":[{"name":"...","manufacturer":"...","barcode":null,"quantity":1,"serving_size":"...","portion_g":null,"portion_ml":null,"category":"makanan|minuman|buah"}]}. Gunakan null bila data tidak terbaca; jangan menebak barcode atau berat.`
 
+func estimatePrompt(items []map[string]any, mode string) string {
+	encoded, _ := json.Marshal(items)
+	if mode == "receipt" {
+		return "Perkirakan nilai gizi per porsi untuk item struk yang tidak cocok dengan katalog. Jangan mengubah identitas/jumlah item. Jangan mengarang: nilai tidak diketahui harus null. Sertakan nutrition_source=estimate pada setiap item. JSON saja: {\"items\":[{\"name\":\"...\",\"serving_size\":\"...\",\"calories\":0,\"protein_g\":0,\"carbs_g\":0,\"fat_g\":0,\"sugar_g\":null,\"sodium_mg\":null,\"nutrition_source\":\"estimate\"}]}. Item: " + string(encoded)
+	}
+	return "Baca angka yang terlihat pada label produk untuk item yang tidak cocok dengan katalog. Label adalah sumber nilai, jangan estimasi angka yang tak terbaca; gunakan null. Jangan mengubah identitas produk. Sertakan nutrition_source=label. JSON saja: {\"items\":[{\"name\":\"...\",\"serving_size\":\"...\",\"calories\":0,\"protein_g\":0,\"carbs_g\":0,\"fat_g\":0,\"sugar_g\":null,\"sodium_mg\":null,\"nutrition_source\":\"label\"}]}. Item: " + string(encoded)
+}
 func (h *Handler) Scan(w http.ResponseWriter, r *http.Request, u middleware.Identity) {
 	if !h.HasAI() {
 		httpx.WriteError(w, 503, "Pemindaian memerlukan GEMINI_API_KEY atau OPENROUTER_API_KEY di backend")
@@ -65,15 +73,35 @@ func (h *Handler) Scan(w http.ResponseWriter, r *http.Request, u middleware.Iden
 		map[string]string{"text": prompt},
 		map[string]any{"inlineData": map[string]string{"mimeType": contentType, "data": base64.StdEncoding.EncodeToString(data)}},
 	}}}
-	result, err := h.GenerateAI(r.Context(), "", contents, true)
+	identified, err := h.GenerateAI(r.Context(), "", contents, true)
 	if err != nil {
 		httpx.WriteError(w, 502, "Pemindaian gagal: "+err.Error())
 		return
 	}
+	items := nutrition.NormalizeScanItems(identified, mode)
+	matches, unmatched := nutrition.ApplyCatalog(h.Catalog, items)
+	if len(unmatched) > 0 {
+		fallbackContents := []any{map[string]any{"role": "user", "parts": []any{
+			map[string]string{"text": estimatePrompt(unmatched, mode)},
+			map[string]any{"inlineData": map[string]string{"mimeType": contentType, "data": base64.StdEncoding.EncodeToString(data)}},
+		}}}
+		fallbackResult, fallbackErr := h.GenerateAI(r.Context(), "", fallbackContents, true)
+		if fallbackErr == nil {
+			estimates := nutrition.NormalizeScanItems(fallbackResult, mode)
+			for index := range estimates {
+				estimates[index]["nutrition_source"] = "estimate"
+			}
+			matches = append(matches, estimates...)
+		} else {
+			for _, item := range unmatched {
+				item["nutrition_source"] = "estimate"
+				for _, key := range []string{"calories", "protein_g", "fat_g", "carbs_g", "sugar_g", "sodium_mg"} {
+					item[key] = nil
+				}
+				matches = append(matches, item)
+			}
+		}
+	}
 	h.recordFeatureUsage(r, "scan_"+mode)
-	httpx.WriteJSON(w, 200, map[string]any{
-		"mode":    mode,
-		"items":   nutrition.NormalizeScanItems(result, mode),
-		"user_id": u.ID,
-	})
+	httpx.WriteJSON(w, 200, map[string]any{"mode": mode, "items": matches, "user_id": u.ID})
 }

@@ -156,7 +156,7 @@ Respons `201`: objek meal tersimpan.
 
 ### `POST /api/scan`
 
-Scan label gizi atau struk. `multipart/form-data`: `image` wajib, JPG/PNG maksimum 8 MiB; `mode` opsional (`label` default atau `receipt`). Respons `200`:
+Scan label gizi atau struk. `multipart/form-data`: `image` wajib, JPG/PNG maksimum 8 MiB; `mode` opsional (`label` default atau `receipt`). Backend mencocokkan nama/barcode ke `data/gizi_lookup.csv` hanya pada baris `bisa_disajikan=1`, `basis_gizi=per_100g`, dan kualitas terpercaya. Hasil membawa `nutrition_source`: `catalog` untuk nilai CSV yang diskalakan ke porsi, `label` untuk angka yang terbaca dari label, atau `estimate` untuk fallback AI. Nilai yang tidak diketahui tetap `null`, bukan `0`. Respons `200`:
 
 ```json
 {
@@ -170,13 +170,14 @@ Scan label gizi atau struk. `multipart/form-data`: `image` wajib, JPG/PNG maksim
     "fat_g":4,
     "sugar_g":10,
     "sodium_mg":100,
+    "nutrition_source":"catalog",
     "note":""
   }],
   "user_id":"<UUID>"
 }
 ```
 
-Nilai gizi yang tidak terbaca dapat `null`; `category` hanya dikembalikan jika ada kategori yang dikenali. Mode struk memfilter kategori ke `makanan`, `minuman`, `buah`. Scan tidak menyimpan meal otomatis. Error khusus: `400` gambar/mode tidak valid, `503` AI tidak dikonfigurasi, `502` pemindaian gagal.
+`category` hanya dikembalikan jika dikenali. Mode struk memfilter kategori ke `makanan`, `minuman`, `buah`. Scan tidak menyimpan meal otomatis. Error khusus: `400` gambar/mode tidak valid, `503` AI tidak dikonfigurasi, `502` pemindaian gagal.
 
 ### `GET /api/chat?conversation_id=<UUID>`
 

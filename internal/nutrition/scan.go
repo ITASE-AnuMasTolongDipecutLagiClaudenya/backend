@@ -67,6 +67,9 @@ func NormalizeScanItems(result map[string]any, mode string) []map[string]any {
 		for _, k := range []string{"calories", "protein_g", "carbs_g", "fat_g", "sugar_g", "sodium_mg"} {
 			item[k] = ToFloatOrNil(item[k])
 		}
+		if source, _ := item["nutrition_source"].(string); source != "catalog" && source != "estimate" && source != "label" {
+			delete(item, "nutrition_source")
+		}
 		items = append(items, item)
 	}
 	if list, ok := result["items"].([]any); ok {
