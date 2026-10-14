@@ -61,14 +61,18 @@ func (h *Handler) DeleteConversation(w http.ResponseWriter, r *http.Request, u m
 		httpx.WriteError(w, 400, "ID percakapan tidak valid")
 		return
 	}
-	_, err := h.SB.Query(r.Context(), r.Header.Get("Authorization"), "DELETE", "chat_messages", supabase.UserFilter(u.ID)+"&conversation_id=eq."+url.QueryEscape(conversationID))
+	deleted, err := h.SB.Query(r.Context(), r.Header.Get("Authorization"), "DELETE", "chat_messages", supabase.UserFilter(u.ID)+"&conversation_id=eq."+url.QueryEscape(conversationID))
 	if err != nil {
 		log.Printf("conversation delete: %v", err)
 		if strings.Contains(err.Error(), "42501") || strings.Contains(strings.ToLower(err.Error()), "permission denied") {
 			httpx.WriteError(w, 502, "Database menolak hapus riwayat. Jalankan migrations/005_chat_delete_policy.sql pada project Supabase yang dipakai aplikasi.")
 			return
 		}
-		httpx.WriteError(w, 502, "Gagal menghapus percakapan: "+err.Error())
+		httpx.WriteError(w, 502, "Gagal menghapus percakapan")
+		return
+	}
+	if len(deleted) == 0 {
+		httpx.WriteError(w, 404, "Percakapan tidak ditemukan atau tidak dapat dihapus. Periksa policy hapus chat di Supabase.")
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -132,7 +136,7 @@ func (h *Handler) PostChat(w http.ResponseWriter, r *http.Request, u middleware.
 		return
 	}
 	profileContext, _ := json.Marshal(nutrition.First(profile))
-	systemInstruction := "Kamu asisten gizi Nutrily untuk sesi ringkasan pemindaian ini. Hanya bahas gizi, makanan, dan kesehatan terkait sesi makan pengguna dan riwayat percakapan ini. Jika pertanyaan di luar gizi/kesehatan, tolak singkat dan arahkan kembali ke topik sesi. Jawab dalam bahasa yang digunakan pengguna. Beri saran umum yang aman, jangan mendiagnosis. Profil pengguna: " + string(profileContext)
+	systemInstruction := "Kamu asisten gizi Nutrily. Bantu pengguna memahami gizi, makanan, dan kesehatan terkait konteks percakapan dan data yang diberikan. Jika pertanyaan di luar gizi/kesehatan, tolak singkat dan arahkan kembali ke topik. Jawab dalam bahasa yang digunakan pengguna. Beri saran umum yang aman, jangan mendiagnosis. Profil pengguna: " + string(profileContext)
 	history, err := h.SB.Query(r.Context(), auth, "GET", "chat_messages", supabase.UserFilter(u.ID)+"&conversation_id=eq."+url.QueryEscape(body.ConversationID)+"&select=role,content&order=created_at.desc&limit=20")
 	if err != nil {
 		httpx.WriteError(w, 502, "Gagal membaca konteks percakapan")

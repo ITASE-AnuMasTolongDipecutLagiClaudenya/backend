@@ -133,11 +133,11 @@ Jumlah penggunaan fitur pengguna aktif. Respons `200`:
 
 ### `GET /api/meals`
 
-Daftar maksimum 100 catatan makan terbaru pengguna aktif. Respons `200`: array objek meal (`id`, `user_id`, `name`, `serving_size`, nilai gizi, `created_at`).
+Daftar maksimum 100 catatan makan terbaru pengguna aktif. Respons `200`: array objek meal (`id`, `user_id`, `name`, `serving_size`, nilai gizi, `scan_session_id`, `scan_mode`, `created_at`). `scan_session_id` opsional; jika diberikan, hanya catatan sesi itu dikembalikan (urut lama ke baru).
 
 ### `POST /api/meals`
 
-Simpan catatan makan. `name` wajib (maksimum 160 byte, tidak boleh kosong setelah trim). Field opsional: `serving_size`, `calories`, `protein_g`, `carbs_g`, `fat_g`, `sugar_g`, `sodium_mg`. Nilai gizi harus angka finite ≥ 0. `user_id` boleh tidak dikirim; bila dikirim akan ditimpa dengan ID pengguna terautentikasi. Field asing ditolak.
+Simpan catatan makan. `name` wajib (maksimum 160 byte, tidak boleh kosong setelah trim). Field opsional: `serving_size`, nilai gizi, `scan_session_id` (UUID), `scan_mode` (`label` atau `receipt`). Nilai gizi harus angka finite ≥ 0. `user_id` boleh tidak dikirim; bila dikirim akan ditimpa dengan ID pengguna terautentikasi. Field asing ditolak.
 
 ```json
 {
@@ -181,7 +181,7 @@ Scan label gizi atau struk. `multipart/form-data`: `image` wajib, JPG/PNG maksim
 
 ### `GET /api/chat?conversation_id=<UUID>`
 
-Ambil riwayat chat (maksimum 100 pesan, urut lama ke baru). `conversation_id` opsional; tanpa parameter memakai percakapan terbaru. Jika belum ada chat, respons `200`: `{"conversation_id":"","messages":[]}`. Bentuk pesan: `id`, `role` (`user` atau `assistant`), `content`, `created_at`.
+Ambil riwayat chat (maksimum 100 pesan, urut lama ke baru). `conversation_id` wajib UUID. Bentuk pesan: `id`, `role` (`user` atau `assistant`), `content`, `created_at`.
 
 ### `POST /api/chat`
 
@@ -202,7 +202,7 @@ Daftar percakapan terbaru pengguna aktif (dibentuk dari maksimum 500 pesan terak
 
 ### `DELETE /api/conversations?conversation_id=<UUID>`
 
-Hapus seluruh pesan percakapan milik pengguna aktif. `conversation_id` wajib UUID. Respons sukses `204` tanpa body. Error database dapat menunjukkan migrasi `003_chat_delete.sql` belum diterapkan.
+Hapus seluruh pesan percakapan milik pengguna aktif. `conversation_id` wajib UUID. Respons sukses `204` tanpa body; bila tidak ada baris terhapus, respons `404`. Pastikan policy dan grant DELETE pada Supabase aktif.
 
 ## Status umum
 

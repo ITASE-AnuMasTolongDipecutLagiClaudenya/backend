@@ -180,7 +180,15 @@ func (h *Handler) recordFeatureUsage(r *http.Request, feature string) {
 }
 
 func (h *Handler) ListMeals(w http.ResponseWriter, r *http.Request, u middleware.Identity) {
-	rows, err := h.SB.Query(r.Context(), r.Header.Get("Authorization"), "GET", "meals", supabase.UserFilter(u.ID)+"&order=created_at.desc&limit=100")
+	filters := supabase.UserFilter(u.ID) + "&order=created_at.desc&limit=100"
+	if sessionID := strings.TrimSpace(r.URL.Query().Get("scan_session_id")); sessionID != "" {
+		if !ValidUUID(sessionID) {
+			httpx.WriteError(w, 400, "ID sesi pemindaian tidak valid")
+			return
+		}
+		filters = supabase.UserFilter(u.ID) + "&scan_session_id=eq." + url.QueryEscape(sessionID) + "&order=created_at.asc&limit=100"
+	}
+	rows, err := h.SB.Query(r.Context(), r.Header.Get("Authorization"), "GET", "meals", filters)
 	if err != nil {
 		log.Printf("meal list query: %v", err)
 		httpx.WriteError(w, 502, "Gagal membaca catatan makan")
@@ -207,10 +215,22 @@ func (h *Handler) CreateMeal(w http.ResponseWriter, r *http.Request, u middlewar
 		httpx.WriteError(w, 400, "Nama makanan terlalu panjang")
 		return
 	}
-	allowed := map[string]bool{"user_id": true, "name": true, "serving_size": true, "calories": true, "protein_g": true, "carbs_g": true, "fat_g": true, "sugar_g": true, "sodium_mg": true}
+	allowed := map[string]bool{"user_id": true, "name": true, "serving_size": true, "calories": true, "protein_g": true, "carbs_g": true, "fat_g": true, "sugar_g": true, "sodium_mg": true, "scan_session_id": true, "scan_mode": true}
 	for k := range body {
 		if !allowed[k] {
 			httpx.WriteError(w, 400, "Field makanan tidak dikenal: "+k)
+			return
+		}
+	}
+	if id, exists := body["scan_session_id"]; exists {
+		if value, ok := id.(string); !ok || !ValidUUID(value) {
+			httpx.WriteError(w, 400, "ID sesi pemindaian tidak valid")
+			return
+		}
+	}
+	if mode, exists := body["scan_mode"]; exists {
+		if value, ok := mode.(string); !ok || (value != "label" && value != "receipt") {
+			httpx.WriteError(w, 400, "Mode pemindaian tidak valid")
 			return
 		}
 	}

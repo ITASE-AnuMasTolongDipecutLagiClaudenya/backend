@@ -65,10 +65,10 @@ func TestDeleteConversationFiltersUserAndSession(t *testing.T) {
 			if r.Method != http.MethodDelete || r.URL.Query().Get("user_id") != "eq.user-1" || r.URL.Query().Get("conversation_id") != "eq.550e8400-e29b-41d4-a716-446655440000" {
 				t.Errorf("unexpected delete request: %s %s", r.Method, r.URL.String())
 			}
-			if got := r.Header.Get("Prefer"); got != "return=minimal" {
-				t.Errorf("Prefer = %q, want return=minimal", got)
+			if got := r.Header.Get("Prefer"); got != "return=representation" {
+				t.Errorf("Prefer = %q, want return=representation", got)
 			}
-			return &http.Response{StatusCode: http.StatusNoContent, Body: io.NopCloser(strings.NewReader("")), Header: make(http.Header), Request: r}, nil
+			return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(`[{"id":1}]`)), Header: make(http.Header), Request: r}, nil
 		})},
 	}
 	h := &Handler{SB: client}
@@ -78,6 +78,22 @@ func TestDeleteConversationFiltersUserAndSession(t *testing.T) {
 	h.DeleteConversation(w, r, middleware.Identity{ID: "user-1"})
 	if w.Code != http.StatusNoContent {
 		t.Fatalf("DELETE conversation status = %d, want %d: %s", w.Code, http.StatusNoContent, w.Body.String())
+	}
+}
+
+func TestDeleteConversationReportsNoRowsDeleted(t *testing.T) {
+	client := &supabase.Client{
+		BaseURL: "https://example.supabase.co",
+		HTTP: &http.Client{Transport: deleteRoundTripFunc(func(r *http.Request) (*http.Response, error) {
+			return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader("[]")), Header: make(http.Header), Request: r}, nil
+		})},
+	}
+	h := &Handler{SB: client}
+	r := httptest.NewRequest(http.MethodDelete, "/api/conversations?conversation_id=550e8400-e29b-41d4-a716-446655440000", nil)
+	w := httptest.NewRecorder()
+	h.DeleteConversation(w, r, middleware.Identity{ID: "user-1"})
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("DELETE empty conversation status = %d, want %d: %s", w.Code, http.StatusNotFound, w.Body.String())
 	}
 }
 

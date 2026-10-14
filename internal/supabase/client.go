@@ -53,7 +53,7 @@ func (c *Client) Query(ctx context.Context, authHeader, method, path string, bod
 			req.Header.Set("Prefer", "return=representation")
 		}
 	} else if method == "DELETE" {
-		req.Header.Set("Prefer", "return=minimal")
+		req.Header.Set("Prefer", "return=representation")
 	}
 	resp, err := c.HTTP.Do(req)
 	if err != nil {
