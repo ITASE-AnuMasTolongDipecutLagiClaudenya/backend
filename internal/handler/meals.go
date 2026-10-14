@@ -49,6 +49,11 @@ type calorieBucket struct {
 type caloriePoint struct {
 	Label    string  `json:"label"`
 	Calories float64 `json:"calories"`
+	ProteinG float64 `json:"protein_g"`
+	CarbsG   float64 `json:"carbs_g"`
+	FatG     float64 `json:"fat_g"`
+	SugarG   float64 `json:"sugar_g"`
+	SodiumMG float64 `json:"sodium_mg"`
 }
 
 func calorieBuckets(period string, now time.Time) []calorieBucket {
@@ -106,18 +111,24 @@ func aggregateCalories(rows []map[string]any, buckets []calorieBucket) []calorie
 			continue
 		}
 		created = created.In(buckets[0].Start.Location())
-		calories, ok := row["calories"].(float64)
-		if !ok {
-			continue
-		}
 		for i, bucket := range buckets {
 			if !created.Before(bucket.Start) && created.Before(bucket.End) {
-				points[i].Calories += calories
+				points[i].Calories += nutritionValue(row, "calories")
+				points[i].ProteinG += nutritionValue(row, "protein_g")
+				points[i].CarbsG += nutritionValue(row, "carbs_g")
+				points[i].FatG += nutritionValue(row, "fat_g")
+				points[i].SugarG += nutritionValue(row, "sugar_g")
+				points[i].SodiumMG += nutritionValue(row, "sodium_mg")
 				break
 			}
 		}
 	}
 	return points
+}
+
+func nutritionValue(row map[string]any, key string) float64 {
+	value, _ := row[key].(float64)
+	return value
 }
 
 func (h *Handler) CalorieHistory(w http.ResponseWriter, r *http.Request, u middleware.Identity) {
@@ -127,7 +138,7 @@ func (h *Handler) CalorieHistory(w http.ResponseWriter, r *http.Request, u middl
 		return
 	}
 	start, end := buckets[0].Start.UTC().Format(time.RFC3339), buckets[len(buckets)-1].End.UTC().Format(time.RFC3339)
-	filters := fmt.Sprintf("%s&select=created_at,calories&created_at=gte.%s&created_at=lt.%s&order=created_at.asc&limit=10000", supabase.UserFilter(u.ID), url.QueryEscape(start), url.QueryEscape(end))
+	filters := fmt.Sprintf("%s&select=created_at,calories,protein_g,carbs_g,fat_g,sugar_g,sodium_mg&created_at=gte.%s&created_at=lt.%s&order=created_at.asc&limit=10000", supabase.UserFilter(u.ID), url.QueryEscape(start), url.QueryEscape(end))
 	meals, err := h.SB.Query(r.Context(), r.Header.Get("Authorization"), "GET", "meals", filters)
 	if err != nil {
 		log.Printf("calorie history query: %v", err)

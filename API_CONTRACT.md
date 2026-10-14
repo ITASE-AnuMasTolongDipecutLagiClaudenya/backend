@@ -121,7 +121,7 @@ Data dasbor hari ini menurut WIB; memuat maksimum 100 catatan makan terbaru hari
 
 ### `GET /api/calories?period=<period>`
 
-Riwayat kalori untuk grafik. `period` wajib: `day`, `week`, `month`, atau `year`. Respons `200`: `{"data":[{"label":"Sen, 12 Okt","calories":1234}]}`. Data aktual dapat berisi nilai `0` untuk rentang tanpa catatan. Implementasi saat ini: `day` mengembalikan tujuh bucket hari pada minggu berjalan; `week` empat bucket pada bulan berjalan; `month` dua belas bulan pada tahun berjalan; `year` bucket tetap 2027–2032.
+Riwayat gizi untuk grafik. `period` wajib: `day`, `week`, `month`, atau `year`. Setiap bucket memuat `calories`, `protein_g`, `carbs_g`, `fat_g`, `sugar_g`, dan `sodium_mg`; nilai nutrisi yang tidak tersedia dijumlahkan sebagai `0`. Implementasi saat ini: `day` mengembalikan tujuh bucket hari pada minggu berjalan; `week` empat bucket pada bulan berjalan; `month` dua belas bulan pada tahun berjalan; `year` bucket tetap 2027–2032.
 
 ### `GET /api/features`
 

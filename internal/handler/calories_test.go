@@ -24,12 +24,12 @@ func TestCalorieBucketsAndAggregation(t *testing.T) {
 		t.Fatalf("yearly buckets = %#v", year)
 	}
 	points := aggregateCalories([]map[string]any{
-		{"created_at": "2026-10-12T01:00:00Z", "calories": float64(400)},
-		{"created_at": "2026-10-12T18:00:00Z", "calories": float64(250)},
+		{"created_at": "2026-10-12T01:00:00Z", "calories": float64(400), "protein_g": float64(25)},
+		{"created_at": "2026-10-12T18:00:00Z", "calories": float64(250), "protein_g": float64(10)},
 		{"created_at": "2026-10-19T00:00:00Z", "calories": float64(900)},
 	}, day)
-	if points[0].Calories != 400 || points[1].Calories != 250 {
-		t.Fatalf("daily calorie totals = %#v", points)
+	if points[0].Calories != 400 || points[1].Calories != 250 || points[0].ProteinG != 25 || points[1].ProteinG != 10 {
+		t.Fatalf("daily nutrition totals = %#v", points)
 	}
 }
 
@@ -38,8 +38,9 @@ func TestAggregateCaloriesHandlesDatabaseTimestampOffsets(t *testing.T) {
 	points := aggregateCalories([]map[string]any{{
 		"created_at": "2026-10-12T23:30:00-05:00",
 		"calories":   float64(321.5),
+		"sodium_mg":  float64(120),
 	}}, buckets)
-	if points[1].Calories != 321.5 {
-		t.Fatalf("offset timestamp should map to Tuesday WIB, got %#v", points)
+	if points[1].Calories != 321.5 || points[1].SodiumMG != 120 {
+		t.Fatalf("offset timestamp should map nutrition to Tuesday WIB, got %#v", points)
 	}
 }
