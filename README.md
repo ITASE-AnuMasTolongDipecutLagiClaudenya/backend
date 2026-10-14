@@ -5,7 +5,7 @@ API Go untuk Nutrily; frontend React terpisah di `../nutrily`.
 ## Menjalankan
 
 1. Salin `.env.example` menjadi `.env`; isi URL dan anon key Supabase. AI memakai Gemini utama bila `GEMINI_API_KEY` tersedia, lalu otomatis fallback ke OpenRouter bila gagal. Masukkan `OPENROUTER_API_KEY` untuk mengaktifkan model gratis `google/gemma-4-31b-it:free`; `GEMINI_API_KEY` boleh kosong. Set `TURNSTILE_SECRET_KEY` ke secret Cloudflare Turnstile.
-2. Jalankan `schema.sql` melalui Supabase SQL Editor. Untuk database lama, jalankan `migrations/003_chat_delete.sql` setelah menghapus `migrations/002_feature_usage.sql`, serta `migrations/001_add_is_gym.sql` bila diperlukan.
+2. Jalankan `schema.sql` melalui Supabase SQL Editor. Untuk database lama, jalankan `migrations/003_chat_delete.sql`, `migrations/004_chat_session_id.sql`, dan `migrations/005_chat_delete_policy.sql` di project Supabase yang dipakai aplikasi. Jalankan `migrations/001_add_is_gym.sql` bila diperlukan.
 3. Jalankan `go mod tidy`, kemudian `go run ./cmd/api`.
 
 Backend memvalidasi bearer token terhadap Supabase Auth, lalu meneruskan token itu ke Supabase REST. RLS memastikan user hanya membaca/menulis datanya sendiri; service-role key tidak diperlukan.

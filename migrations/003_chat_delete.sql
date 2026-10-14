@@ -6,3 +6,5 @@ create policy "Users delete own chat"
   using (auth.uid() = user_id);
 
 grant delete on public.chat_messages to authenticated;
+
+notify pgrst, 'reload schema';

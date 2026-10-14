@@ -22,18 +22,6 @@ import (
 
 func (h *Handler) GetChat(w http.ResponseWriter, r *http.Request, u middleware.Identity) {
 	conversationID := strings.TrimSpace(r.URL.Query().Get("conversation_id"))
-	if conversationID == "" {
-		rows, err := h.SB.Query(r.Context(), r.Header.Get("Authorization"), "GET", "chat_messages", supabase.UserFilter(u.ID)+"&select=conversation_id,created_at&order=created_at.desc&limit=1")
-		if err != nil {
-			httpx.WriteError(w, 502, "Gagal membaca riwayat chat")
-			return
-		}
-		if len(rows) == 0 {
-			httpx.WriteJSON(w, 200, map[string]any{"conversation_id": "", "messages": []any{}})
-			return
-		}
-		conversationID = fmt.Sprint(rows[0]["conversation_id"])
-	}
 	if !ValidUUID(conversationID) {
 		httpx.WriteError(w, 400, "ID percakapan tidak valid")
 		return
@@ -77,7 +65,7 @@ func (h *Handler) DeleteConversation(w http.ResponseWriter, r *http.Request, u m
 	if err != nil {
 		log.Printf("conversation delete: %v", err)
 		if strings.Contains(err.Error(), "42501") || strings.Contains(strings.ToLower(err.Error()), "permission denied") {
-			httpx.WriteError(w, 502, "Database menolak hapus riwayat. Pastikan migration 003_chat_delete.sql sudah dijalankan pada project Supabase yang dipakai aplikasi.")
+			httpx.WriteError(w, 502, "Database menolak hapus riwayat. Jalankan migrations/005_chat_delete_policy.sql pada project Supabase yang dipakai aplikasi.")
 			return
 		}
 		httpx.WriteError(w, 502, "Gagal menghapus percakapan: "+err.Error())

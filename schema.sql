@@ -59,7 +59,7 @@ create table if not exists public.feature_usage (
 
 alter table public.chat_messages add column if not exists conversation_id uuid;
 update public.chat_messages set conversation_id = gen_random_uuid() where conversation_id is null;
-alter table public.chat_messages alter column conversation_id set default gen_random_uuid();
+alter table public.chat_messages alter column conversation_id drop default;
 alter table public.chat_messages alter column conversation_id set not null;
 
 create index if not exists meals_user_created_idx on public.meals(user_id, created_at desc);

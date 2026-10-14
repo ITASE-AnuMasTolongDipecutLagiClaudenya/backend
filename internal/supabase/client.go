@@ -20,6 +20,16 @@ type Client struct {
 func UserFilter(id string) string { return "user_id=eq." + url.QueryEscape(id) }
 
 func (c *Client) Query(ctx context.Context, authHeader, method, path string, body ...any) ([]map[string]any, error) {
+	if (method == http.MethodGet || method == http.MethodDelete) && len(body) > 0 {
+		if filters, ok := body[0].(string); ok {
+			separator := "?"
+			if strings.Contains(path, "?") {
+				separator = "&"
+			}
+			path += separator + filters
+			body = nil
+		}
+	}
 	var reader io.Reader
 	if len(body) > 0 {
 		encoded, err := json.Marshal(body[0])
