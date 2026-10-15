@@ -133,11 +133,11 @@ Jumlah penggunaan fitur pengguna aktif. Respons `200`:
 
 ### `GET /api/meals`
 
-Daftar maksimum 100 catatan makan terbaru pengguna aktif. Respons `200`: array objek meal (`id`, `user_id`, `name`, `serving_size`, nilai gizi, `scan_session_id`, `scan_mode`, `created_at`). `scan_session_id` opsional; jika diberikan, hanya catatan sesi itu dikembalikan (urut lama ke baru).
+Daftar maksimum 100 catatan makan terbaru pengguna aktif. Respons `200`: array objek meal (`id`, `user_id`, `name`, `serving_size`, nilai gizi, `scan_session_id`, `scan_session_name`, `scan_mode`, `created_at`). `scan_session_id` opsional; jika diberikan, hanya catatan sesi itu dikembalikan (urut lama ke baru).
 
 ### `POST /api/meals`
 
-Simpan catatan makan. `name` wajib (maksimum 160 byte, tidak boleh kosong setelah trim). Field opsional: `serving_size`, nilai gizi, `scan_session_id` (UUID), `scan_mode` (`label` atau `receipt`). Nilai gizi harus angka finite ≥ 0. `user_id` boleh tidak dikirim; bila dikirim akan ditimpa dengan ID pengguna terautentikasi. Field asing ditolak.
+Simpan catatan makan. `name` wajib (maksimum 160 byte, tidak boleh kosong setelah trim). Field opsional: `serving_size`, nilai gizi, `scan_session_id` (UUID), `scan_session_name` (maksimum 60 karakter, tidak boleh kosong), `scan_mode` (`label` atau `receipt`). Nilai gizi harus angka finite ≥ 0. `user_id` boleh tidak dikirim; bila dikirim akan ditimpa dengan ID pengguna terautentikasi. Field asing ditolak.
 
 ```json
 {

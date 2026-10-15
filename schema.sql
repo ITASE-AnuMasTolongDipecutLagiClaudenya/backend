@@ -39,9 +39,11 @@ create table if not exists public.meals (
   sodium_mg numeric(8,2),
   created_at timestamptz not null default now(),
   scan_session_id uuid,
+  scan_session_name text,
   scan_mode text check (scan_mode is null or scan_mode in ('label', 'receipt'))
 );
 alter table public.meals add column if not exists scan_session_id uuid;
+alter table public.meals add column if not exists scan_session_name text;
 alter table public.meals add column if not exists scan_mode text check (scan_mode is null or scan_mode in ('label', 'receipt'));
 
 create index if not exists meals_scan_session_idx on public.meals(user_id, scan_session_id) where scan_session_id is not null;

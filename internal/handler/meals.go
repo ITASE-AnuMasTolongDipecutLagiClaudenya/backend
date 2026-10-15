@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"nutrily/backend/internal/httpx"
 	"nutrily/backend/internal/middleware"
@@ -215,7 +216,7 @@ func (h *Handler) CreateMeal(w http.ResponseWriter, r *http.Request, u middlewar
 		httpx.WriteError(w, 400, "Nama makanan terlalu panjang")
 		return
 	}
-	allowed := map[string]bool{"user_id": true, "name": true, "serving_size": true, "calories": true, "protein_g": true, "carbs_g": true, "fat_g": true, "sugar_g": true, "sodium_mg": true, "scan_session_id": true, "scan_mode": true}
+	allowed := map[string]bool{"user_id": true, "name": true, "serving_size": true, "calories": true, "protein_g": true, "carbs_g": true, "fat_g": true, "sugar_g": true, "sodium_mg": true, "scan_session_id": true, "scan_session_name": true, "scan_mode": true}
 	for k := range body {
 		if !allowed[k] {
 			httpx.WriteError(w, 400, "Field makanan tidak dikenal: "+k)
@@ -233,6 +234,14 @@ func (h *Handler) CreateMeal(w http.ResponseWriter, r *http.Request, u middlewar
 			httpx.WriteError(w, 400, "Mode pemindaian tidak valid")
 			return
 		}
+	}
+	if sessionName, exists := body["scan_session_name"]; exists {
+		value, ok := sessionName.(string)
+		if !ok || strings.TrimSpace(value) == "" || utf8.RuneCountInString(value) > 60 {
+			httpx.WriteError(w, 400, "Nama sesi pemindaian wajib diisi (maksimum 60 karakter)")
+			return
+		}
+		body["scan_session_name"] = strings.TrimSpace(value)
 	}
 	for _, f := range []string{"calories", "protein_g", "carbs_g", "fat_g", "sugar_g", "sodium_mg"} {
 		if raw, exists := body[f]; exists {
