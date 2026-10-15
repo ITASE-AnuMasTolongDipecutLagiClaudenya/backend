@@ -139,6 +139,7 @@ Daftar maksimum 1000 catatan makan terbaru pengguna aktif. Respons `200`: array 
 
 Simpan catatan makan. `name` wajib (maksimum 160 byte, tidak boleh kosong setelah trim). Field opsional: `serving_size`, nilai gizi, `scan_session_id` (UUID), `scan_session_name` (maksimum 60 karakter, tidak boleh kosong), `scan_mode` (`label` atau `receipt`). Nilai gizi harus angka finite ≥ 0. `user_id` boleh tidak dikirim; bila dikirim akan ditimpa dengan ID pengguna terautentikasi. Field asing ditolak.
 
+
 ```json
 {
   "name":"Nasi ayam",
@@ -153,6 +154,13 @@ Simpan catatan makan. `name` wajib (maksimum 160 byte, tidak boleh kosong setela
 ```
 
 Respons `201`: objek meal tersimpan.
+### `POST /api/profile/avatar`
+
+Upload avatar multipart field `avatar` (JPG/PNG, maksimum 5 MB). Backend memotong area tengah menjadi persegi dan menyimpan gambar ke Cloudinary. Respons `200`: `{ "avatar_url": "...", "public_id": "..." }`.
+
+### `DELETE /api/profile/avatar`
+
+Hapus avatar Cloudinary pengguna aktif. Respons sukses `204` tanpa body.
 
 ### `PATCH /api/meals?scan_session_id=<UUID>` atau `?meal_id=<ID>`
 

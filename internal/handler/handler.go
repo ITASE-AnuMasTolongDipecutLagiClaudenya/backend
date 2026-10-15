@@ -15,15 +15,18 @@ import (
 var errNoAIProvider = errors.New("tidak ada provider AI aktif; isi GEMINI_API_KEY atau OPENROUTER_API_KEY")
 
 type Handler struct {
-	SB         *supabase.Client
-	AI         *gemini.Client
-	OpenRouter *openrouter.Client
-	TS         *turnstile.Client
-	Catalog    *nutrition.Catalog
+	SB               *supabase.Client
+	AI               *gemini.Client
+	OpenRouter       *openrouter.Client
+	TS               *turnstile.Client
+	Catalog          *nutrition.Catalog
+	CloudinaryCloud  string
+	CloudinaryKey    string
+	CloudinarySecret string
 }
 
-func New(sb *supabase.Client, ai *gemini.Client, openRouter *openrouter.Client, ts *turnstile.Client, catalog *nutrition.Catalog) *Handler {
-	return &Handler{SB: sb, AI: ai, OpenRouter: openRouter, TS: ts, Catalog: catalog}
+func New(sb *supabase.Client, ai *gemini.Client, openRouter *openrouter.Client, ts *turnstile.Client, catalog *nutrition.Catalog, cloud, cloudKey, cloudSecret string) *Handler {
+	return &Handler{SB: sb, AI: ai, OpenRouter: openRouter, TS: ts, Catalog: catalog, CloudinaryCloud: cloud, CloudinaryKey: cloudKey, CloudinarySecret: cloudSecret}
 }
 
 func (h *Handler) GenerateAI(ctx context.Context, systemInstruction string, contents []any, jsonMode bool) (map[string]any, error) {

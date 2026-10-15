@@ -14,6 +14,9 @@ func (h *Handler) ServeAPI(w http.ResponseWriter, r *http.Request) {
 		h.GetProfile(w, r, u)
 	case r.URL.Path == "/api/profile" && r.Method == "PUT":
 		h.PutProfile(w, r, u)
+		h.UploadAvatar(w, r, u)
+	case r.URL.Path == "/api/profile/avatar" && r.Method == "DELETE":
+		h.DeleteAvatar(w, r, u)
 	case r.URL.Path == "/api/targets" && r.Method == "POST":
 		h.CalculateTargets(w, r)
 	case r.URL.Path == "/api/dashboard" && r.Method == "GET":
