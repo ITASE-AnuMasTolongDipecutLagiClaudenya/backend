@@ -6,6 +6,7 @@ import (
 	"math"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -181,7 +182,7 @@ func (h *Handler) recordFeatureUsage(r *http.Request, feature string) {
 }
 
 func (h *Handler) ListMeals(w http.ResponseWriter, r *http.Request, u middleware.Identity) {
-	filters := supabase.UserFilter(u.ID) + "&order=created_at.desc&limit=100"
+	filters := supabase.UserFilter(u.ID) + "&order=created_at.desc&limit=1000"
 	if sessionID := strings.TrimSpace(r.URL.Query().Get("scan_session_id")); sessionID != "" {
 		if !ValidUUID(sessionID) {
 			httpx.WriteError(w, 400, "ID sesi pemindaian tidak valid")
@@ -196,6 +197,68 @@ func (h *Handler) ListMeals(w http.ResponseWriter, r *http.Request, u middleware
 		return
 	}
 	httpx.WriteJSON(w, 200, rows)
+}
+
+func (h *Handler) UpdateMealSessionName(w http.ResponseWriter, r *http.Request, u middleware.Identity) {
+	var body map[string]any
+	if !httpx.DecodeBody(w, r, &body) || body == nil {
+		return
+	}
+	value, ok := body["scan_session_name"].(string)
+	if !ok {
+		httpx.WriteError(w, 400, "Nama sesi pemindaian wajib diisi")
+		return
+	}
+	sessionName := strings.TrimSpace(value)
+	if sessionName == "" || utf8.RuneCountInString(sessionName) > 60 {
+		httpx.WriteError(w, 400, "Nama sesi pemindaian wajib diisi (maksimum 60 karakter)")
+		return
+	}
+	filter, ok := mealFilter(r)
+	if !ok {
+		httpx.WriteError(w, 400, "ID sesi pemindaian atau makanan tidak valid")
+		return
+	}
+	rows, err := h.SB.Query(r.Context(), r.Header.Get("Authorization"), http.MethodPatch, "meals?"+supabase.UserFilter(u.ID)+"&"+filter, map[string]string{"scan_session_name": sessionName})
+	if err != nil {
+		log.Printf("meal session rename: %v", err)
+		httpx.WriteError(w, 502, "Gagal mengubah nama sesi")
+		return
+	}
+	if len(rows) == 0 {
+		httpx.WriteError(w, 404, "Sesi pemindaian tidak ditemukan")
+		return
+	}
+	httpx.WriteJSON(w, 200, rows)
+}
+
+func (h *Handler) DeleteMeals(w http.ResponseWriter, r *http.Request, u middleware.Identity) {
+	filter, ok := mealFilter(r)
+	if !ok {
+		httpx.WriteError(w, 400, "ID sesi pemindaian atau makanan tidak valid")
+		return
+	}
+	_, err := h.SB.Query(r.Context(), r.Header.Get("Authorization"), http.MethodDelete, "meals", supabase.UserFilter(u.ID)+"&"+filter)
+	if err != nil {
+		log.Printf("meal delete: %v", err)
+		httpx.WriteError(w, 502, "Gagal menghapus catatan makanan")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func mealFilter(r *http.Request) (string, bool) {
+	if sessionID := strings.TrimSpace(r.URL.Query().Get("scan_session_id")); sessionID != "" {
+		if !ValidUUID(sessionID) {
+			return "", false
+		}
+		return "scan_session_id=eq." + url.QueryEscape(sessionID), true
+	}
+	mealID, err := strconv.ParseInt(r.URL.Query().Get("meal_id"), 10, 64)
+	if err != nil || mealID < 1 {
+		return "", false
+	}
+	return "id=eq." + strconv.FormatInt(mealID, 10), true
 }
 
 func (h *Handler) CreateMeal(w http.ResponseWriter, r *http.Request, u middleware.Identity) {

@@ -82,6 +82,10 @@ drop policy if exists "Users insert own profile" on public.profiles;
 drop policy if exists "Users update own profile" on public.profiles;
 drop policy if exists "Users read own meals" on public.meals;
 drop policy if exists "Users insert own meals" on public.meals;
+drop policy if exists "Users update own meals" on public.meals;
+drop policy if exists "Users delete own meals" on public.meals;
+drop policy if exists "Users update own meal session name" on public.meals;
+drop policy if exists "Users delete own meals rows" on public.meals;
 drop policy if exists "Users read own chat" on public.chat_messages;
 drop policy if exists "Users insert own chat" on public.chat_messages;
 drop policy if exists "Users delete own chat" on public.chat_messages;
@@ -93,6 +97,8 @@ create policy "Users insert own profile" on public.profiles for insert to authen
 create policy "Users update own profile" on public.profiles for update to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "Users read own meals" on public.meals for select to authenticated using (auth.uid() = user_id);
 create policy "Users insert own meals" on public.meals for insert to authenticated with check (auth.uid() = user_id);
+create policy "Users update own meals" on public.meals for update to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "Users delete own meals" on public.meals for delete to authenticated using (auth.uid() = user_id);
 create policy "Users read own chat" on public.chat_messages for select to authenticated using (auth.uid() = user_id);
 create policy "Users insert own chat" on public.chat_messages for insert to authenticated with check (auth.uid() = user_id);
 create policy "Users delete own chat" on public.chat_messages for delete to authenticated using (auth.uid() = user_id);
@@ -100,6 +106,7 @@ create policy "Users read own feature usage" on public.feature_usage for select 
 
 grant select, insert, update on public.profiles to authenticated;
 grant select, insert on public.meals, public.chat_messages to authenticated;
+grant update, delete on public.meals to authenticated;
 grant delete on public.chat_messages to authenticated;
 grant select on public.feature_usage to authenticated;
 grant usage, select on sequence public.meals_id_seq, public.chat_messages_id_seq to authenticated;

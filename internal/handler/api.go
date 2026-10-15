@@ -24,6 +24,10 @@ func (h *Handler) ServeAPI(w http.ResponseWriter, r *http.Request) {
 		h.FeatureUsage(w, r, u)
 	case r.URL.Path == "/api/meals" && r.Method == "GET":
 		h.ListMeals(w, r, u)
+	case r.URL.Path == "/api/meals" && r.Method == "PATCH":
+		h.UpdateMealSessionName(w, r, u)
+	case r.URL.Path == "/api/meals" && r.Method == "DELETE":
+		h.DeleteMeals(w, r, u)
 	case r.URL.Path == "/api/meals" && r.Method == "POST":
 		h.CreateMeal(w, r, u)
 	case r.URL.Path == "/api/scan" && r.Method == "POST":

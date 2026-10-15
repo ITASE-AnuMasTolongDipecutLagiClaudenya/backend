@@ -133,7 +133,7 @@ Jumlah penggunaan fitur pengguna aktif. Respons `200`:
 
 ### `GET /api/meals`
 
-Daftar maksimum 100 catatan makan terbaru pengguna aktif. Respons `200`: array objek meal (`id`, `user_id`, `name`, `serving_size`, nilai gizi, `scan_session_id`, `scan_session_name`, `scan_mode`, `created_at`). `scan_session_id` opsional; jika diberikan, hanya catatan sesi itu dikembalikan (urut lama ke baru).
+Daftar maksimum 1000 catatan makan terbaru pengguna aktif. Respons `200`: array objek meal (`id`, `user_id`, `name`, `serving_size`, nilai gizi, `scan_session_id`, `scan_session_name`, `scan_mode`, `created_at`). `scan_session_id` opsional; jika diberikan, hanya catatan sesi itu dikembalikan (urut lama ke baru).
 
 ### `POST /api/meals`
 
@@ -153,6 +153,14 @@ Simpan catatan makan. `name` wajib (maksimum 160 byte, tidak boleh kosong setela
 ```
 
 Respons `201`: objek meal tersimpan.
+
+### `PATCH /api/meals?scan_session_id=<UUID>` atau `?meal_id=<ID>`
+
+Ubah nama sesi (`scan_session_name`) untuk semua catatan dalam sesi, atau satu catatan lama tanpa ID sesi. Body: `{"scan_session_name":"Scan label 1"}`.
+
+### `DELETE /api/meals?scan_session_id=<UUID>` atau `?meal_id=<ID>`
+
+Hapus semua catatan dalam sesi atau satu catatan lama tanpa ID sesi.
 
 ### `POST /api/scan`
 
