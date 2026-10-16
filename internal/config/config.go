@@ -19,6 +19,7 @@ type Config struct {
 	CloudinarySecret string
 	Port             string
 	TurnstileSecret  string
+	ApifyToken       string
 	Origins          map[string]bool
 }
 
@@ -36,6 +37,7 @@ func Load() Config {
 		CloudinarySecret: strings.TrimSpace(os.Getenv("CLOUDINARY_API_SECRET")),
 		Port:             env("PORT", "8080"),
 		TurnstileSecret:  os.Getenv("TURNSTILE_SECRET_KEY"),
+		ApifyToken:       strings.TrimSpace(os.Getenv("APIFY_API_TOKEN")),
 		Origins: map[string]bool{
 			"http://localhost:5173": true,
 			"http://localhost:8443": true,

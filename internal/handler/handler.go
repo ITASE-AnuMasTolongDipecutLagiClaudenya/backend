@@ -23,6 +23,7 @@ type Handler struct {
 	CloudinaryCloud  string
 	CloudinaryKey    string
 	CloudinarySecret string
+	ApifyToken       string
 }
 
 func New(sb *supabase.Client, ai *gemini.Client, openRouter *openrouter.Client, ts *turnstile.Client, catalog *nutrition.Catalog, cloud, cloudKey, cloudSecret string) *Handler {

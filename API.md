@@ -4,11 +4,11 @@ Monorepo lokal berisi dua proyek terpisah: frontend React di `nutrily/` dan back
 
 ## Backend
 
-1. Dari `backend/`, salin `.env.example` menjadi `.env`; isi kredensial Supabase dan `GEMINI_API_KEY` dari Google AI Studio.
+1. Dari `backend/`, salin `.env.example` menjadi `.env`; isi kredensial Supabase, `APIFY_API_TOKEN` untuk OCR gambar, dan `GEMINI_API_KEY` dari Google AI Studio (opsional bila OpenRouter dikonfigurasi).
 2. Jalankan `schema.sql` di Supabase SQL Editor.
 3. Jalankan `go run ./cmd/api`.
 
-Frontend mengirim Supabase access token. API memvalidasi token via Supabase Auth sebelum mengakses data pengguna; Supabase RLS membatasi akses tabel. Backend memanggil Gemini untuk OCR dan chat.
+Frontend mengirim Supabase access token. API memvalidasi token via Supabase Auth sebelum mengakses data pengguna; Supabase RLS membatasi akses tabel. Backend menggunakan Apify untuk OCR gambar, lalu Gemini/OpenRouter memproses teks OCR dan chat.
 
 Default model `gemini-3.8-flash` (Free Tier tercantum di harga resmi Google; kuota dan ketersediaan dapat berubah).
 

@@ -40,7 +40,9 @@ func main() {
 	ai := &gemini.Client{APIKey: cfg.GeminiKey, Model: cfg.Model, HTTP: geminiHTTPClient}
 	openRouterAI := &openrouter.Client{APIKey: cfg.OpenRouterKey, Model: cfg.OpenRouterModel, HTTP: openRouterHTTPClient}
 	ts := &turnstile.Client{Secret: cfg.TurnstileSecret, HTTP: httpClient}
-	mux := server.New(cfg, sb, handler.New(sb, ai, openRouterAI, ts, catalog, cfg.CloudinaryCloud, cfg.CloudinaryKey, cfg.CloudinarySecret))
+	apiHandler := handler.New(sb, ai, openRouterAI, ts, catalog, cfg.CloudinaryCloud, cfg.CloudinaryKey, cfg.CloudinarySecret)
+	apiHandler.ApifyToken = cfg.ApifyToken
+	mux := server.New(cfg, sb, apiHandler)
 	addr := ":" + cfg.Port
 	log.Printf("Nutrily API listening on %s", addr)
 	log.Fatal(http.ListenAndServe(addr, mux))

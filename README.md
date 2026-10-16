@@ -4,7 +4,7 @@ API Go untuk Nutrily; frontend React terpisah di `../nutrily`.
 
 ## Menjalankan
 
-1. Salin `.env.example` menjadi `.env`; isi URL dan anon key Supabase. AI memakai Gemini utama bila `GEMINI_API_KEY` tersedia, lalu otomatis fallback ke OpenRouter bila gagal. Masukkan `OPENROUTER_API_KEY` untuk mengaktifkan model gratis `google/gemma-4-31b-it:free`; `GEMINI_API_KEY` boleh kosong. Isi `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, dan `CLOUDINARY_API_SECRET` dari Cloudinary untuk upload avatar. Set `TURNSTILE_SECRET_KEY` ke secret Cloudflare Turnstile.
+1. Salin `.env.example` menjadi `.env`; isi URL dan anon key Supabase serta `APIFY_API_TOKEN` untuk OCR gambar. Hasil teks OCR Apify diproses Gemini utama bila `GEMINI_API_KEY` tersedia, lalu otomatis fallback ke OpenRouter bila gagal. Masukkan `OPENROUTER_API_KEY` untuk mengaktifkan model gratis `google/gemma-4-31b-it:free`; `GEMINI_API_KEY` boleh kosong. Isi `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, dan `CLOUDINARY_API_SECRET` dari Cloudinary untuk upload avatar. Set `TURNSTILE_SECRET_KEY` ke secret Cloudflare Turnstile.
 2. Jalankan `schema.sql` melalui Supabase SQL Editor. Untuk database lama, jalankan migrations `003_chat_delete.sql`, `004_chat_session_id.sql`, `005_chat_delete_policy.sql`, dan `007_meal_scan_session.sql` pada project Supabase yang dipakai aplikasi. Jalankan `001_add_is_gym.sql` bila diperlukan.
 3. Jalankan `go mod tidy`, kemudian `go run ./cmd/api`.
 
