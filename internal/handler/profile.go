@@ -34,7 +34,7 @@ func (h *Handler) PutProfile(w http.ResponseWriter, r *http.Request, u middlewar
 		httpx.WriteError(w, 400, "Body profil wajib berupa objek JSON")
 		return
 	}
-	for field, limits := range map[string][2]float64{"age": {13, 120}, "weight_kg": {1, 500}, "height_cm": {30, 275}} {
+	for field, limits := range map[string][2]float64{"age": {13, 120}, "weight_kg": {20, 200}, "height_cm": {30, 200}} {
 		value, ok := body[field].(float64)
 		if !ok || value < limits[0] || value > limits[1] {
 			httpx.WriteError(w, 400, "Nilai "+field+" tidak valid")
@@ -61,9 +61,17 @@ func (h *Handler) PutProfile(w http.ResponseWriter, r *http.Request, u middlewar
 		httpx.WriteError(w, 400, "Target tidak valid")
 		return
 	}
-	if name, ok := body["full_name"].(string); !ok || len(strings.TrimSpace(name)) > 120 {
-		httpx.WriteError(w, 400, "Nama profil tidak valid")
+	name, ok := body["full_name"].(string)
+	if !ok || strings.TrimSpace(name) == "" || len(strings.TrimSpace(name)) > 120 {
+		httpx.WriteError(w, 400, "Nama profil wajib diisi dan maksimal 120 karakter")
 		return
+	}
+	if gender := body["gender"]; gender == "Wanita" {
+		status, ok := body["pregnancy_status"].(string)
+		if !ok || strings.TrimSpace(status) == "" {
+			httpx.WriteError(w, 400, "Status kehamilan atau menyusui wajib diisi")
+			return
+		}
 	}
 	if status, ok := body["pregnancy_status"].(string); ok && !oneOf(status, "Tidak ada", "Trimester 1", "Trimester 2", "Trimester 3", "Menyusui 6 bulan pertama", "Menyusui 6 bulan kedua") {
 		httpx.WriteError(w, 400, "Status kehamilan tidak valid")

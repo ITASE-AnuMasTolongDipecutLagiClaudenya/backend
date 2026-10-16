@@ -83,7 +83,7 @@ Simpan/upsert profil pengguna aktif. Field `user_id` dari klien diabaikan dan di
 }
 ```
 
-Validasi: usia 13–120, berat 1–500 kg, tinggi 30–275 cm; `gender`: `Pria` atau `Wanita`; `activity`: `Minim gerak`, `Ringan`, `Sedang`, `Sangat aktif`, `Aktivitas fisik berat`; `goal`: `Menurunkan berat badan`, `Menjaga berat badan`, `Menambah berat badan`; `is_gym` boolean. `pregnancy_status` bila berupa string harus salah satu dari `Tidak ada`, `Trimester 1`, `Trimester 2`, `Trimester 3`, `Menyusui 6 bulan pertama`, `Menyusui 6 bulan kedua`; `null` diterima. `full_name` wajib berupa string (boleh kosong), maksimum 120 byte setelah trim. Field asing ditolak. Respons `200`: objek profil tersimpan beserta `target_calories`, `target_protein_g`, `target_carbs_g`, `target_fat_g`, `target_sugar_g`, `target_sodium_mg`, dan `updated_at`.
+Validasi: usia 13–120, berat 20–200 kg, tinggi 30–200 cm; `gender`: `Pria` atau `Wanita`; `activity`: `Minim gerak`, `Ringan`, `Sedang`, `Sangat aktif`, `Aktivitas fisik berat`; `goal`: `Menurunkan berat badan`, `Menjaga berat badan`, `Menambah berat badan`; `is_gym` boolean. `pregnancy_status` bila berupa string harus salah satu dari `Tidak ada`, `Trimester 1`, `Trimester 2`, `Trimester 3`, `Menyusui 6 bulan pertama`, `Menyusui 6 bulan kedua`; `null` diterima. `full_name` wajib berupa string (boleh kosong), maksimum 120 byte setelah trim. Field asing ditolak. Respons `200`: objek profil tersimpan beserta `target_calories`, `target_protein_g`, `target_carbs_g`, `target_fat_g`, `target_sugar_g`, `target_sodium_mg`, dan `updated_at`.
 
 ### `POST /api/targets`
 
@@ -139,6 +139,7 @@ Daftar maksimum 1000 catatan makan terbaru pengguna aktif. Respons `200`: array 
 
 Simpan catatan makan. `name` wajib (maksimum 160 byte, tidak boleh kosong setelah trim). Field opsional: `serving_size`, nilai gizi, `scan_session_id` (UUID), `scan_session_name` (maksimum 60 karakter, tidak boleh kosong), `scan_mode` (`label` atau `receipt`). Nilai gizi harus angka finite ≥ 0. `user_id` boleh tidak dikirim; bila dikirim akan ditimpa dengan ID pengguna terautentikasi. Field asing ditolak.
 
+
 ```json
 {
   "name":"Nasi ayam",
@@ -153,6 +154,13 @@ Simpan catatan makan. `name` wajib (maksimum 160 byte, tidak boleh kosong setela
 ```
 
 Respons `201`: objek meal tersimpan.
+### `POST /api/profile/avatar`
+
+Upload avatar multipart field `avatar` (JPG/PNG, maksimum 5 MB). Backend memotong area tengah menjadi persegi dan menyimpan gambar ke Cloudinary. Respons `200`: `{ "avatar_url": "...", "public_id": "..." }`.
+
+### `DELETE /api/profile/avatar`
+
+Hapus avatar Cloudinary pengguna aktif. Respons sukses `204` tanpa body.
 
 ### `PATCH /api/meals?scan_session_id=<UUID>` atau `?meal_id=<ID>`
 

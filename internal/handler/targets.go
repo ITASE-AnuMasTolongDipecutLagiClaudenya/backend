@@ -30,8 +30,8 @@ func (h *Handler) CalculateTargets(w http.ResponseWriter, r *http.Request) {
 	activity, activityOK := body["activity"].(string)
 	goal, goalOK := body["goal"].(string)
 	if !ageOK || age < 13 || age > 120 || age != math.Trunc(age) ||
-		!weightOK || weight < 1 || weight > 500 ||
-		!heightOK || height < 30 || height > 275 {
+		!weightOK || weight < 20 || weight > 200 ||
+		!heightOK || height < 30 || height > 200 {
 		httpx.WriteError(w, 400, "Usia, berat, atau tinggi tidak valid")
 		return
 	}

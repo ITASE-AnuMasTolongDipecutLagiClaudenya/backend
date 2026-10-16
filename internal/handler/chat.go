@@ -157,6 +157,7 @@ func (h *Handler) PostChat(w http.ResponseWriter, r *http.Request, u middleware.
 	messages = append(messages, map[string]any{"role": "user", "parts": userParts})
 	response, err := h.GenerateAI(r.Context(), systemInstruction, messages, false)
 	if err != nil {
+		log.Printf("chat AI generation failed: %v", err)
 		httpx.WriteError(w, 502, "Asisten AI gagal merespons")
 		return
 	}
