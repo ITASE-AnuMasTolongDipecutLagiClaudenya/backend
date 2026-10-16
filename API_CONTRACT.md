@@ -83,7 +83,7 @@ Simpan/upsert profil pengguna aktif. Field `user_id` dari klien diabaikan dan di
 }
 ```
 
-Validasi: usia 13–120, berat 1–500 kg, tinggi 30–275 cm; `gender`: `Pria` atau `Wanita`; `activity`: `Minim gerak`, `Ringan`, `Sedang`, `Sangat aktif`, `Aktivitas fisik berat`; `goal`: `Menurunkan berat badan`, `Menjaga berat badan`, `Menambah berat badan`; `is_gym` boolean. `pregnancy_status` bila berupa string harus salah satu dari `Tidak ada`, `Trimester 1`, `Trimester 2`, `Trimester 3`, `Menyusui 6 bulan pertama`, `Menyusui 6 bulan kedua`; `null` diterima. `full_name` wajib berupa string (boleh kosong), maksimum 120 byte setelah trim. Field asing ditolak. Respons `200`: objek profil tersimpan beserta `target_calories`, `target_protein_g`, `target_carbs_g`, `target_fat_g`, `target_sugar_g`, `target_sodium_mg`, dan `updated_at`.
+Validasi: usia 13–120, berat 20–200 kg, tinggi 30–200 cm; `gender`: `Pria` atau `Wanita`; `activity`: `Minim gerak`, `Ringan`, `Sedang`, `Sangat aktif`, `Aktivitas fisik berat`; `goal`: `Menurunkan berat badan`, `Menjaga berat badan`, `Menambah berat badan`; `is_gym` boolean. `pregnancy_status` bila berupa string harus salah satu dari `Tidak ada`, `Trimester 1`, `Trimester 2`, `Trimester 3`, `Menyusui 6 bulan pertama`, `Menyusui 6 bulan kedua`; `null` diterima. `full_name` wajib berupa string (boleh kosong), maksimum 120 byte setelah trim. Field asing ditolak. Respons `200`: objek profil tersimpan beserta `target_calories`, `target_protein_g`, `target_carbs_g`, `target_fat_g`, `target_sugar_g`, `target_sodium_mg`, dan `updated_at`.
 
 ### `POST /api/targets`
 

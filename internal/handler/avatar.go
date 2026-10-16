@@ -9,6 +9,7 @@ import (
 	_ "image/jpeg"
 	_ "image/png"
 	"io"
+	"log"
 	"mime/multipart"
 	"net/http"
 	"net/url"
@@ -96,6 +97,16 @@ func (h *Handler) UploadAvatar(w http.ResponseWriter, r *http.Request, u middlew
 	defer resp.Body.Close()
 	result, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		var failure struct {
+			Error struct {
+				Message string `json:"message"`
+			} `json:"error"`
+		}
+		if json.Unmarshal(result, &failure) == nil && failure.Error.Message != "" {
+			log.Printf("Cloudinary avatar upload failed (%d): %s", resp.StatusCode, failure.Error.Message)
+			httpx.WriteError(w, http.StatusBadGateway, "Cloudinary gagal menyimpan foto: "+failure.Error.Message)
+			return
+		}
 		httpx.WriteError(w, http.StatusBadGateway, "Cloudinary gagal menyimpan foto")
 		return
 	}

@@ -34,7 +34,7 @@ func (h *Handler) PutProfile(w http.ResponseWriter, r *http.Request, u middlewar
 		httpx.WriteError(w, 400, "Body profil wajib berupa objek JSON")
 		return
 	}
-	for field, limits := range map[string][2]float64{"age": {13, 120}, "weight_kg": {1, 500}, "height_cm": {30, 275}} {
+	for field, limits := range map[string][2]float64{"age": {13, 120}, "weight_kg": {20, 200}, "height_cm": {30, 200}} {
 		value, ok := body[field].(float64)
 		if !ok || value < limits[0] || value > limits[1] {
 			httpx.WriteError(w, 400, "Nilai "+field+" tidak valid")
