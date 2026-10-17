@@ -222,11 +222,15 @@ func (h *Handler) UpdateMealSessionName(w http.ResponseWriter, r *http.Request, 
 	rows, err := h.SB.Query(r.Context(), r.Header.Get("Authorization"), http.MethodPatch, "meals?"+supabase.UserFilter(u.ID)+"&"+filter, map[string]string{"scan_session_name": sessionName})
 	if err != nil {
 		log.Printf("meal session rename: %v", err)
+		if mealPolicyDenied(err) {
+			httpx.WriteError(w, 502, "Database menolak ubah nama sesi. Jalankan migrations/009_meal_history_actions.sql pada project Supabase yang dipakai aplikasi.")
+			return
+		}
 		httpx.WriteError(w, 502, "Gagal mengubah nama sesi")
 		return
 	}
 	if len(rows) == 0 {
-		httpx.WriteError(w, 404, "Sesi pemindaian tidak ditemukan")
+		httpx.WriteError(w, 404, "Sesi pemindaian tidak ditemukan atau tidak dapat diubah. Periksa policy ubah meals di Supabase.")
 		return
 	}
 	httpx.WriteJSON(w, 200, rows)
@@ -238,13 +242,26 @@ func (h *Handler) DeleteMeals(w http.ResponseWriter, r *http.Request, u middlewa
 		httpx.WriteError(w, 400, "ID sesi pemindaian atau makanan tidak valid")
 		return
 	}
-	_, err := h.SB.Query(r.Context(), r.Header.Get("Authorization"), http.MethodDelete, "meals", supabase.UserFilter(u.ID)+"&"+filter)
+	deleted, err := h.SB.Query(r.Context(), r.Header.Get("Authorization"), http.MethodDelete, "meals", supabase.UserFilter(u.ID)+"&"+filter)
 	if err != nil {
 		log.Printf("meal delete: %v", err)
+		if mealPolicyDenied(err) {
+			httpx.WriteError(w, 502, "Database menolak hapus catatan. Jalankan migrations/009_meal_history_actions.sql pada project Supabase yang dipakai aplikasi.")
+			return
+		}
 		httpx.WriteError(w, 502, "Gagal menghapus catatan makanan")
 		return
 	}
+	if len(deleted) == 0 {
+		httpx.WriteError(w, 404, "Catatan makanan tidak ditemukan atau tidak dapat dihapus. Periksa policy hapus meals di Supabase.")
+		return
+	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func mealPolicyDenied(err error) bool {
+	message := strings.ToLower(err.Error())
+	return strings.Contains(message, "42501") || strings.Contains(message, "permission denied")
 }
 
 func mealFilter(r *http.Request) (string, bool) {

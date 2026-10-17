@@ -166,11 +166,11 @@ Hapus avatar Cloudinary pengguna aktif. Respons sukses `204` tanpa body.
 
 ### `PATCH /api/meals?scan_session_id=<UUID>` atau `?meal_id=<ID>`
 
-Ubah nama sesi (`scan_session_name`) untuk semua catatan dalam sesi, atau satu catatan lama tanpa ID sesi. Body: `{"scan_session_name":"Scan label 1"}`.
+Ubah nama sesi (`scan_session_name`) untuk semua catatan dalam sesi, atau satu catatan lama tanpa ID sesi. Body: `{"scan_session_name":"Scan label 1"}`. Respons `404` bila tidak ada baris terubah; pastikan policy dan grant UPDATE pada Supabase aktif.
 
 ### `DELETE /api/meals?scan_session_id=<UUID>` atau `?meal_id=<ID>`
 
-Hapus semua catatan dalam sesi atau satu catatan lama tanpa ID sesi.
+Hapus semua catatan dalam sesi atau satu catatan lama tanpa ID sesi. Respons sukses `204` tanpa body; bila tidak ada baris terhapus, respons `404`. Pastikan policy dan grant DELETE pada Supabase aktif.
 
 Scan label gizi atau struk. `multipart/form-data`: `image` wajib, JPG/PNG maksimum 8 MiB; `mode` opsional (`label` default atau `receipt`). Urutan resolusi data gizi: (1) katalog `data/gizi_lookup.csv` pada baris `bisa_disajikan=1`, `basis_gizi=per_100g`, kualitas terpercaya; (2) cache produk (berbasis barcode+variant, TTL `PRODUCT_CACHE_MAX_AGE`); (3) OCR label; (4) pencarian web OpenAI `web_search` untuk estimasi tak berkatalog. Hasil membawa `nutrition_source`: `catalog` untuk nilai CSV yang diskalakan ke porsi, `label` untuk angka yang terbaca dari label, atau `estimate` untuk fallback AI. Nilai yang tidak diketahui tetap `null`, bukan `0`. Respons `200`:
 
