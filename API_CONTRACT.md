@@ -39,9 +39,8 @@ Endpoint berikut dipanggil komponen aplikasi, bukan endpoint publik backend Nutr
 | `{SUPABASE_URL}/auth/v1/user` | Backend | Validasi access token |
 | `{SUPABASE_URL}/rest/v1/{profiles,meals,chat_messages,rpc/*}` | Backend | Baca/tulis data melalui Supabase REST dan RLS |
 | `https://challenges.cloudflare.com/turnstile/v0/siteverify` | Backend | Verifikasi token Turnstile |
-| Apify Actor OCR | Backend | Ekstraksi teks gambar; memerlukan `APIFY_API_TOKEN` |
-| `https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent` | Backend | Pemahaman teks OCR/chat; utama bila Gemini dikonfigurasi |
-| `https://openrouter.ai/api/v1/chat/completions` | Backend | Fallback AI bila Gemini gagal/tidak tersedia |
+| `https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent` | Backend | OCR label/struk dan analisis gambar chat, `thinkingBudget: 0`; key diputar dari `GEMINI_API_KEYS` |
+| `https://api.groq.com/openai/v1/chat/completions` | Backend | Estimasi gizi, saran dan jawaban chat memakai `openai/gpt-oss-20b`; key diputar dari `GROQ_API_KEYS` |
 | Supabase Auth OAuth/user endpoints | Frontend Supabase SDK | Login Google, session, pembaruan kata sandi |
 
 ### `GET /health`

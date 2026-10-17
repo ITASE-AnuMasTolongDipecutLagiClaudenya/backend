@@ -33,6 +33,24 @@ func TestCreateMealRejectsInvalidSessionName(t *testing.T) {
 	}
 }
 
+func TestCreateMealRejectsUntrustedNutritionSource(t *testing.T) {
+	for _, source := range []string{"http://example.com/nutrition", "https://user:pass@example.com/nutrition", "https://" + strings.Repeat("a", 2048)} {
+		body, err := json.Marshal(map[string]any{
+			"name":              "Makanan",
+			"nutrition_sources": []map[string]string{{"title": "Sumber", "url": source}},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		request := httptest.NewRequest(http.MethodPost, "/api/meals", strings.NewReader(string(body)))
+		response := httptest.NewRecorder()
+		(&Handler{}).CreateMeal(response, request, middleware.Identity{ID: "user-1"})
+		if response.Code != http.StatusBadRequest {
+			t.Fatalf("CreateMeal source %q status = %d, want %d", source, response.Code, http.StatusBadRequest)
+		}
+	}
+}
+
 func TestUpdateMealSessionNameUsesUserScopedFilter(t *testing.T) {
 	client := &supabase.Client{
 		BaseURL: "https://example.supabase.co",

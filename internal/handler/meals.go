@@ -279,11 +279,44 @@ func (h *Handler) CreateMeal(w http.ResponseWriter, r *http.Request, u middlewar
 		httpx.WriteError(w, 400, "Nama makanan terlalu panjang")
 		return
 	}
-	allowed := map[string]bool{"user_id": true, "name": true, "serving_size": true, "calories": true, "protein_g": true, "carbs_g": true, "fat_g": true, "sugar_g": true, "sodium_mg": true, "scan_session_id": true, "scan_session_name": true, "scan_mode": true}
+	allowed := map[string]bool{"user_id": true, "name": true, "serving_size": true, "calories": true, "protein_g": true, "carbs_g": true, "fat_g": true, "sugar_g": true, "sodium_mg": true, "nutrition_sources": true, "scan_session_id": true, "scan_session_name": true, "scan_mode": true}
 	for k := range body {
 		if !allowed[k] {
 			httpx.WriteError(w, 400, "Field makanan tidak dikenal: "+k)
 			return
+		}
+	}
+	if raw, exists := body["nutrition_sources"]; exists {
+		sources, ok := raw.([]any)
+		if !ok || len(sources) > 5 {
+			httpx.WriteError(w, 400, "Daftar sumber gizi tidak valid")
+			return
+		}
+		for _, rawSource := range sources {
+			source, ok := rawSource.(map[string]any)
+			if !ok {
+				httpx.WriteError(w, 400, "Sumber gizi tidak valid")
+				return
+			}
+			for key := range source {
+				if key != "url" && key != "title" {
+					httpx.WriteError(w, 400, "Field sumber gizi tidak dikenal: "+key)
+					return
+				}
+			}
+			link, ok := source["url"].(string)
+			parsed, err := url.Parse(link)
+			if !ok || len(link) > 2048 || err != nil || parsed.Scheme != "https" || parsed.Host == "" || parsed.User != nil {
+				httpx.WriteError(w, 400, "URL sumber gizi harus HTTPS")
+				return
+			}
+			if title, exists := source["title"]; exists {
+				value, ok := title.(string)
+				if !ok || utf8.RuneCountInString(value) > 200 {
+					httpx.WriteError(w, 400, "Judul sumber gizi tidak valid")
+					return
+				}
+			}
 		}
 	}
 	if id, exists := body["scan_session_id"]; exists {

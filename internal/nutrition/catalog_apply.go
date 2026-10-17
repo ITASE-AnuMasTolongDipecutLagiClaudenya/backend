@@ -44,6 +44,9 @@ func ApplyCatalog(catalog *Catalog, items []map[string]any) ([]map[string]any, [
 		item["sugar_g"] = scaleOptional(match.Sugar, factor)
 		item["sodium_mg"] = scaleOptional(match.Sodium, factor)
 		item["nutrition_source"] = "catalog"
+		if match.Estimated {
+			item["nutrition_source"] = "catalog_estimate"
+		}
 		resolved = append(resolved, item)
 	}
 	return resolved, unmatched

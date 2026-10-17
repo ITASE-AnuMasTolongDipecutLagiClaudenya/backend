@@ -103,13 +103,47 @@ func TestNormalizeScanItems(t *testing.T) {
 		map[string]any{"name": "Item tanpa kategori", "calories": 45.0},
 		map[string]any{"name": "TOTAL", "calories": 290.0},
 	}}, "receipt")
-	if len(receipt) != 4 || receipt[0]["name"] != "Roti" || receipt[1]["name"] != "Teh" || receipt[2]["name"] != "Mi Instan Merek X" || receipt[3]["name"] != "Apel Fuji" {
+	if len(receipt) != 7 || receipt[0]["name"] != "Roti" || receipt[1]["name"] != "Teh" || receipt[2]["name"] != "Mi Instan Merek X" || receipt[3]["name"] != "Apel Fuji" {
 		t.Fatalf("unexpected receipt items: %#v", receipt)
 	}
-	if receipt[0]["category"] != "makanan" || receipt[1]["category"] != "minuman" || receipt[2]["category"] != "makanan" || receipt[3]["category"] != "buah" {
+	if receipt[0]["category"] != "makanan" || receipt[1]["category"] != "minuman" || receipt[2]["category"] != "makanan" || receipt[3]["category"] != "buah" || receipt[4]["category"] != "makanan" || receipt[5]["category"] != "makanan" || receipt[6]["category"] != "makanan" {
 		t.Fatalf("unexpected categories: %#v", receipt)
 	}
 	if receipt[0]["calories"] != 200.0 {
 		t.Fatalf("expected string calories coerced, got %#v", receipt[0]["calories"])
+	}
+}
+
+func TestNormalizeScanItemsPreservesGroundingSources(t *testing.T) {
+	sources := []map[string]string{{"title": "Nutrition facts", "url": "https://example.com/nutrition"}}
+	items := NormalizeScanItems(map[string]any{"items": []any{
+		map[string]any{"name": "Susu", "calories": 120.0, "sources": sources},
+	}}, "label")
+	got, ok := items[0]["sources"].([]map[string]string)
+	if len(items) != 1 || !ok || len(got) != 1 || got[0]["url"] != sources[0]["url"] {
+		t.Fatalf("grounding sources lost in normalization: %#v", items)
+	}
+}
+
+func TestNormalizeScanItemsPreservesEstimateID(t *testing.T) {
+	items := NormalizeScanItems(map[string]any{"items": []any{
+		map[string]any{"_estimate_id": "1", "name": "Bakso", "calories": 200.0},
+	}}, "receipt")
+	if len(items) != 1 || items[0]["_estimate_id"] != "1" {
+		t.Fatalf("estimate ID lost during normalization: %#v", items)
+	}
+}
+
+func TestNormalizeReceiptInfersCategoryFromProductName(t *testing.T) {
+	items := NormalizeScanItems(map[string]any{"items": []any{
+		map[string]any{"name": "AQUA 600ML", "category": "grocery"},
+		map[string]any{"name": "Pisang Cavendish"},
+		map[string]any{"name": "Roti Tawar", "category": "other"},
+		map[string]any{"name": "Beras Premium"},
+		map[string]any{"name": "Produk XYZ 250ml", "category": "grocery"},
+		map[string]any{"name": "Shampoo 250ml"},
+	}}, "receipt")
+	if len(items) != 5 || items[0]["category"] != "minuman" || items[1]["category"] != "buah" || items[2]["category"] != "makanan" || items[3]["category"] != "makanan" || items[4]["category"] != "makanan" {
+		t.Fatalf("receipt categories inferred incorrectly: %#v", items)
 	}
 }

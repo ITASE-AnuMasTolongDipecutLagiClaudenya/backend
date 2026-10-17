@@ -4,13 +4,13 @@ Monorepo lokal berisi dua proyek terpisah: frontend React di `nutrily/` dan back
 
 ## Backend
 
-1. Dari `backend/`, salin `.env.example` menjadi `.env`; isi kredensial Supabase, `APIFY_API_TOKEN` untuk OCR gambar, dan `GEMINI_API_KEY` dari Google AI Studio (opsional bila OpenRouter dikonfigurasi).
-2. Jalankan `schema.sql` di Supabase SQL Editor.
+1. Dari `backend/`, salin `.env.example` menjadi `.env`; isi kredensial Supabase, enam key Gemini di `GEMINI_API_KEYS` untuk OCR dan estimasi gizi berbasis Google Search grounding, serta enam key Groq di `GROQ_API_KEYS` untuk saran gizi dan chat. Pisahkan key dengan koma.
+2. Jalankan `schema.sql` di Supabase SQL Editor. Untuk database lama, jalankan `migrations/011_meal_nutrition_sources.sql` agar sumber gizi tersimpan di riwayat.
 3. Jalankan `go run ./cmd/api`.
 
-Frontend mengirim Supabase access token. API memvalidasi token via Supabase Auth sebelum mengakses data pengguna; Supabase RLS membatasi akses tabel. Backend menggunakan Apify untuk OCR gambar, lalu Gemini/OpenRouter memproses teks OCR dan chat.
+Frontend mengirim Supabase access token. API memvalidasi token via Supabase Auth sebelum mengakses data pengguna; Supabase RLS membatasi akses tabel. Backend memproses gambar langsung dengan Gemini untuk OCR, memakai Gemini Google Search grounding untuk estimasi tak berkatalog dan menyimpan tautan sumber terverifikasi, lalu menggunakan Groq untuk saran gizi dan chat.
 
-Default model `gemini-3.8-flash` (Free Tier tercantum di harga resmi Google; kuota dan ketersediaan dapat berubah).
+Model default: `gemini-3.8-flash` untuk OCR dan analisis gambar chat; `openai/gpt-oss-20b` untuk saran gizi dan jawaban chat. GPT-OSS 20B model production, bukan Preview, dan memiliki batas Free Plan. Pada Developer Plan, tarif resminya $0.075/1M input tokens dan $0.30/1M output tokens.
 
 Endpoint: `/health`, `/api/profile`, `/api/dashboard`, `/api/meals`, `/api/scan`, `/api/chat`.
 

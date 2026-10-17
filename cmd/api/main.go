@@ -8,9 +8,9 @@ import (
 
 	"nutrily/backend/internal/config"
 	"nutrily/backend/internal/gemini"
+	"nutrily/backend/internal/groq"
 	"nutrily/backend/internal/handler"
 	"nutrily/backend/internal/nutrition"
-	"nutrily/backend/internal/openrouter"
 	"nutrily/backend/internal/server"
 	"nutrily/backend/internal/supabase"
 	"nutrily/backend/internal/turnstile"
@@ -34,14 +34,13 @@ func main() {
 		log.Fatalf("close nutrition catalog: %v", closeErr)
 	}
 	httpClient := &http.Client{Timeout: 45 * time.Second}
-	geminiHTTPClient := &http.Client{Timeout: 35 * time.Second}
-	openRouterHTTPClient := &http.Client{Timeout: 2 * time.Minute}
+	geminiHTTPClient := &http.Client{Timeout: 55 * time.Second}
+	groqHTTPClient := &http.Client{Timeout: 2 * time.Minute}
 	sb := &supabase.Client{BaseURL: cfg.SupabaseURL, AnonKey: cfg.AnonKey, HTTP: httpClient}
-	ai := &gemini.Client{APIKey: cfg.GeminiKey, Model: cfg.Model, HTTP: geminiHTTPClient}
-	openRouterAI := &openrouter.Client{APIKey: cfg.OpenRouterKey, Model: cfg.OpenRouterModel, HTTP: openRouterHTTPClient}
+	ai := &gemini.Client{APIKeys: cfg.GeminiKeys, Model: cfg.GeminiModel, HTTP: geminiHTTPClient}
+	groqAI := &groq.Client{APIKeys: cfg.GroqKeys, Model: cfg.GroqModel, HTTP: groqHTTPClient}
 	ts := &turnstile.Client{Secret: cfg.TurnstileSecret, HTTP: httpClient}
-	apiHandler := handler.New(sb, ai, openRouterAI, ts, catalog, cfg.CloudinaryCloud, cfg.CloudinaryKey, cfg.CloudinarySecret)
-	apiHandler.ApifyToken = cfg.ApifyToken
+	apiHandler := handler.New(sb, ai, groqAI, ts, catalog, cfg.CloudinaryCloud, cfg.CloudinaryKey, cfg.CloudinarySecret)
 	mux := server.New(cfg, sb, apiHandler)
 	addr := ":" + cfg.Port
 	log.Printf("Nutrily API listening on %s", addr)

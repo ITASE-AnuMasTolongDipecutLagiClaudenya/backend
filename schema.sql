@@ -37,6 +37,7 @@ create table if not exists public.meals (
   fat_g numeric(8,2) not null default 0,
   sugar_g numeric(8,2),
   sodium_mg numeric(8,2),
+  nutrition_sources jsonb not null default '[]'::jsonb,
   created_at timestamptz not null default now(),
   scan_session_id uuid,
   scan_session_name text,
@@ -45,6 +46,7 @@ create table if not exists public.meals (
 alter table public.meals add column if not exists scan_session_id uuid;
 alter table public.meals add column if not exists scan_session_name text;
 alter table public.meals add column if not exists scan_mode text check (scan_mode is null or scan_mode in ('label', 'receipt'));
+alter table public.meals add column if not exists nutrition_sources jsonb not null default '[]'::jsonb;
 
 create index if not exists meals_scan_session_idx on public.meals(user_id, scan_session_id) where scan_session_id is not null;
 create table if not exists public.chat_messages (

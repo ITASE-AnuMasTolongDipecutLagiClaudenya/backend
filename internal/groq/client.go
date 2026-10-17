@@ -1,4 +1,4 @@
-package openrouter
+package groq
 
 import (
 	"bytes"
@@ -9,14 +9,17 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"sync/atomic"
 )
 
-const endpoint = "https://openrouter.ai/api/v1/chat/completions"
+const endpoint = "https://api.groq.com/openai/v1/chat/completions"
 
 type Client struct {
-	APIKey string
-	Model  string
-	HTTP   *http.Client
+	APIKey  string
+	APIKeys []string
+	Model   string
+	HTTP    *http.Client
+	key     atomic.Uint64
 }
 
 func (c *Client) Generate(ctx context.Context, systemInstruction string, contents []any, jsonMode bool) (map[string]any, error) {
@@ -74,7 +77,7 @@ func (c *Client) Generate(ctx context.Context, systemInstruction string, content
 		}
 		messages = append(messages, map[string]any{"role": role, "content": converted})
 	}
-	payload := map[string]any{"model": c.Model, "messages": messages, "temperature": 0.2}
+	payload := map[string]any{"model": c.Model, "messages": messages, "temperature": 0.2, "max_completion_tokens": 768, "include_reasoning": false}
 	if jsonMode {
 		payload["response_format"] = map[string]string{"type": "json_object"}
 	}
@@ -86,10 +89,8 @@ func (c *Client) Generate(ctx context.Context, systemInstruction string, content
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("Authorization", "Bearer "+c.APIKey)
+	req.Header.Set("Authorization", "Bearer "+c.nextAPIKey())
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("HTTP-Referer", "https://nutrily.app")
-	req.Header.Set("X-OpenRouter-Title", "Nutrily")
 	client := c.HTTP
 	if client == nil {
 		client = http.DefaultClient
@@ -104,7 +105,7 @@ func (c *Client) Generate(ctx context.Context, systemInstruction string, content
 		return nil, err
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("OpenRouter HTTP %d: %s", resp.StatusCode, strings.TrimSpace(string(data[:min(len(data), 2048)])))
+		return nil, fmt.Errorf("Groq HTTP %d: %s", resp.StatusCode, strings.TrimSpace(string(data[:min(len(data), 2048)])))
 	}
 	var result struct {
 		Choices []struct {
@@ -117,13 +118,13 @@ func (c *Client) Generate(ctx context.Context, systemInstruction string, content
 		} `json:"error"`
 	}
 	if err := json.Unmarshal(data, &result); err != nil {
-		return nil, errors.New("respons OpenRouter tidak valid")
+		return nil, errors.New("respons Groq tidak valid")
 	}
 	if result.Error != nil {
-		return nil, fmt.Errorf("OpenRouter: %s", result.Error.Message)
+		return nil, fmt.Errorf("Groq: %s", result.Error.Message)
 	}
 	if len(result.Choices) == 0 || strings.TrimSpace(result.Choices[0].Message.Content) == "" {
-		return nil, errors.New("OpenRouter tidak menghasilkan teks")
+		return nil, errors.New("Groq tidak menghasilkan teks")
 	}
 	text := strings.TrimSpace(result.Choices[0].Message.Content)
 	if !jsonMode {
@@ -137,5 +138,12 @@ func (c *Client) Generate(ctx context.Context, systemInstruction string, content
 	if err := json.Unmarshal([]byte(text), &list); err == nil {
 		return map[string]any{"items": list}, nil
 	}
-	return nil, errors.New("hasil OCR OpenRouter bukan JSON valid")
+	return nil, errors.New("respons Groq bukan JSON valid")
+}
+
+func (c *Client) nextAPIKey() string {
+	if len(c.APIKeys) == 0 {
+		return c.APIKey
+	}
+	return c.APIKeys[(c.key.Add(1)-1)%uint64(len(c.APIKeys))]
 }

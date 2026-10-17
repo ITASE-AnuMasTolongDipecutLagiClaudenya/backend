@@ -10,16 +10,15 @@ import (
 type Config struct {
 	SupabaseURL      string
 	AnonKey          string
-	GeminiKey        string
-	Model            string
-	OpenRouterKey    string
-	OpenRouterModel  string
+	GeminiKeys       []string
+	GeminiModel      string
+	GroqKeys         []string
+	GroqModel        string
 	CloudinaryCloud  string
 	CloudinaryKey    string
 	CloudinarySecret string
 	Port             string
 	TurnstileSecret  string
-	ApifyToken       string
 	Origins          map[string]bool
 }
 
@@ -28,16 +27,15 @@ func Load() Config {
 	c := Config{
 		SupabaseURL:      strings.TrimRight(os.Getenv("SUPABASE_URL"), "/"),
 		AnonKey:          os.Getenv("SUPABASE_ANON_KEY"),
-		GeminiKey:        os.Getenv("GEMINI_API_KEY"),
-		Model:            env("GEMINI_MODEL", "gemini-3.8-flash"),
-		OpenRouterKey:    os.Getenv("OPENROUTER_API_KEY"),
-		OpenRouterModel:  env("OPENROUTER_MODEL", "google/gemma-4-31b-it:free"),
+		GeminiKeys:       keys("GEMINI_API_KEYS", "GEMINI_API_KEY"),
+		GeminiModel:      env("GEMINI_MODEL", "gemini-3.8-flash"),
+		GroqKeys:         keys("GROQ_API_KEYS", "GROQ_API_KEY"),
+		GroqModel:        env("GROQ_MODEL", "openai/gpt-oss-20b"),
 		CloudinaryCloud:  strings.TrimSpace(os.Getenv("CLOUDINARY_CLOUD_NAME")),
 		CloudinaryKey:    strings.TrimSpace(os.Getenv("CLOUDINARY_API_KEY")),
 		CloudinarySecret: strings.TrimSpace(os.Getenv("CLOUDINARY_API_SECRET")),
 		Port:             env("PORT", "8080"),
 		TurnstileSecret:  os.Getenv("TURNSTILE_SECRET_KEY"),
-		ApifyToken:       strings.TrimSpace(os.Getenv("APIFY_API_TOKEN")),
 		Origins: map[string]bool{
 			"http://localhost:5173": true,
 			"http://localhost:8443": true,
@@ -49,6 +47,20 @@ func Load() Config {
 		}
 	}
 	return c
+}
+
+func keys(primary, fallback string) []string {
+	value := os.Getenv(primary)
+	if value == "" {
+		value = os.Getenv(fallback)
+	}
+	var result []string
+	for _, key := range strings.Split(value, ",") {
+		if key = strings.TrimSpace(key); key != "" {
+			result = append(result, key)
+		}
+	}
+	return result
 }
 
 func env(key, fallback string) string {

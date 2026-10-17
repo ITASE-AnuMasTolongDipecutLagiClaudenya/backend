@@ -14,14 +14,63 @@ var nonFoodKeywords = []string{
 	"lotion", "kosmetik", "makeup", "skincare",
 }
 
+func hasReceiptKeyword(name, keyword string) bool {
+	normalize := func(value string) string {
+		return strings.Join(strings.Fields(strings.Map(func(r rune) rune {
+			if r >= 'A' && r <= 'Z' {
+				return r + ('a' - 'A')
+			}
+			if r >= 'a' && r <= 'z' || r >= '0' && r <= '9' {
+				return r
+			}
+			return ' '
+		}, value)), " ")
+	}
+	return strings.Contains(" "+normalize(name)+" ", " "+normalize(keyword)+" ")
+}
+
 func IsNonFood(name string) bool {
-	lower := strings.ToLower(name)
 	for _, k := range nonFoodKeywords {
-		if strings.Contains(lower, k) {
+		if hasReceiptKeyword(name, k) {
 			return true
 		}
 	}
 	return false
+}
+
+func inferReceiptCategory(name string) string {
+	for _, keyword := range []string{
+		"aqua", "vit", "le minerale", "cleo", "ades", "air mineral", "teh", "tea", "kopi", "coffee",
+		"susu", "milk", "soda", "cola", "jus", "juice", "sirup", "syrup", "pocari", "mizone", "yakult",
+		"boba", "beverage", "drink", "fanta", "sprite", "coca-cola", "coca cola", "pepsi", "frestea",
+		"fruit tea", "teh botol", "ultra milk", "ultramilk", "frisian flag", "bear brand", "indomilk", "cimory",
+		"good day", "nescafe", "kapal api", "milo", "floridina", "minute maid",
+	} {
+		if hasReceiptKeyword(name, keyword) {
+			return "minuman"
+		}
+	}
+	for _, keyword := range []string{
+		"apel", "pisang", "jeruk", "mangga", "alpukat", "semangka", "melon", "anggur", "nanas", "pepaya",
+		"pir", "stroberi", "strawberry", "durian", "salak", "jambu", "kelapa", "kiwi", "manggis", "rambutan",
+		"sirsak", "leci", "buah naga", "fruit",
+	} {
+		if hasReceiptKeyword(name, keyword) {
+			return "buah"
+		}
+	}
+	for _, keyword := range []string{
+		"nasi", "roti", "mie", "mi instan", "ayam", "daging", "sapi", "ikan", "telur", "tahu", "tempe",
+		"sayur", "bakso", "sosis", "nugget", "biskuit", "keripik", "snack", "camilan", "cemilan", "kue",
+		"donat", "pizza", "burger", "sate", "sambal", "saus", "bumbu", "keju", "yogurt", "yoghurt",
+		"cokelat", "coklat", "permen", "gula", "garam", "sereal", "oat", "bubur", "rendang", "makanan", "food",
+		"kacang", "cashew", "almond", "nuts",
+	} {
+		if hasReceiptKeyword(name, keyword) {
+			return "makanan"
+		}
+	}
+	return ""
 }
 
 func NormalizeCategory(v any) string {
@@ -30,7 +79,7 @@ func NormalizeCategory(v any) string {
 	switch c {
 	case "makanan", "food", "meal", "meals", "snack", "snacks", "cemilan", "camilan", "makanan ringan", "makanan kemasan", "produk makanan", "lauk", "nasi", "roti":
 		return "makanan"
-	case "minuman", "drink", "drinks", "beverage", "beverages", "minum", "minuman kemasan", "produk minuman":
+	case "minuman", "drink", "drinks", "beverage", "beverages", "minum", "minuman kemasan", "minuman ringan", "produk minuman", "soft drink", "soft drinks":
 		return "minuman"
 	case "buah", "buah-buahan", "buah segar", "fruit", "fruits", "sayur", "vegetable":
 		return "buah"
@@ -54,10 +103,13 @@ func NormalizeScanItems(result map[string]any, mode string) []map[string]any {
 			return
 		}
 		item["name"] = name
-		category, _ := item["category"].(string)
-		category = NormalizeCategory(category)
+		rawCategory, _ := item["category"].(string)
+		category := NormalizeCategory(rawCategory)
 		if mode == "receipt" && category != "makanan" && category != "minuman" && category != "buah" {
-			return
+			category = inferReceiptCategory(name)
+			if category == "" {
+				category = "makanan"
+			}
 		}
 		if category == "makanan" || category == "minuman" || category == "buah" {
 			item["category"] = category
@@ -85,7 +137,7 @@ func NormalizeScanItems(result map[string]any, mode string) []map[string]any {
 		return items
 	}
 	item := map[string]any{}
-	for _, k := range []string{"name", "category", "serving_size", "calories", "protein_g", "carbs_g", "fat_g", "sugar_g", "sodium_mg", "note", "mode", "user_id"} {
+	for _, k := range []string{"name", "_estimate_id", "category", "serving_size", "calories", "protein_g", "carbs_g", "fat_g", "sugar_g", "sodium_mg", "sources", "note", "mode", "user_id"} {
 		if v, ok := result[k]; ok {
 			item[k] = v
 		}
