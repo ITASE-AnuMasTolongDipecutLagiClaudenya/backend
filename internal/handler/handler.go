@@ -3,49 +3,63 @@ package handler
 import (
 	"context"
 	"errors"
-	"log"
 
+	"nutrily/backend/internal/exa"
 	"nutrily/backend/internal/gemini"
+	"nutrily/backend/internal/groq"
 	"nutrily/backend/internal/nutrition"
-	"nutrily/backend/internal/openrouter"
+	"nutrily/backend/internal/openai"
+	"nutrily/backend/internal/scanbudget"
 	"nutrily/backend/internal/supabase"
 	"nutrily/backend/internal/turnstile"
 )
 
-var errNoAIProvider = errors.New("tidak ada provider AI aktif; isi GEMINI_API_KEY atau OPENROUTER_API_KEY")
+var errNoAIProvider = errors.New("tidak ada provider AI aktif; isi GROQ_API_KEYS")
 
 type Handler struct {
 	SB               *supabase.Client
-	AI               *gemini.Client
-	OpenRouter       *openrouter.Client
+	Gemini           *gemini.Client
+	Groq             *groq.Client
+	OpenAI           *openai.Client
+	Exa              *exa.Client
 	TS               *turnstile.Client
 	Catalog          *nutrition.Catalog
 	CloudinaryCloud  string
 	CloudinaryKey    string
 	CloudinarySecret string
+	Store            *Store
 }
 
-func New(sb *supabase.Client, ai *gemini.Client, openRouter *openrouter.Client, ts *turnstile.Client, catalog *nutrition.Catalog, cloud, cloudKey, cloudSecret string) *Handler {
-	return &Handler{SB: sb, AI: ai, OpenRouter: openRouter, TS: ts, Catalog: catalog, CloudinaryCloud: cloud, CloudinaryKey: cloudKey, CloudinarySecret: cloudSecret}
+// Store groups the process-local scan cost controls.
+type Store struct {
+	Cache        *scanbudget.Cache
+	Quota        *scanbudget.Quota
+	SearchMaxRes int
+}
+
+func New(sb *supabase.Client, ai *gemini.Client, groqAI *groq.Client, openaiAI *openai.Client, exaAI *exa.Client, ts *turnstile.Client, catalog *nutrition.Catalog, cloud, cloudKey, cloudSecret string) *Handler {
+	return &Handler{SB: sb, Gemini: ai, Groq: groqAI, OpenAI: openaiAI, Exa: exaAI, TS: ts, Catalog: catalog, CloudinaryCloud: cloud, CloudinaryKey: cloudKey, CloudinarySecret: cloudSecret}
 }
 
 func (h *Handler) GenerateAI(ctx context.Context, systemInstruction string, contents []any, jsonMode bool) (map[string]any, error) {
-	if h.AI != nil && h.AI.APIKey != "" {
-		result, err := h.AI.Generate(ctx, systemInstruction, contents, jsonMode)
-		if err == nil {
-			return result, nil
-		}
-		if h.OpenRouter == nil || h.OpenRouter.APIKey == "" {
-			return nil, err
-		}
-		log.Printf("Gemini failed; falling back to OpenRouter: %v", err)
-	}
-	if h.OpenRouter != nil && h.OpenRouter.APIKey != "" {
-		return h.OpenRouter.Generate(ctx, systemInstruction, contents, jsonMode)
+	if h.HasAI() {
+		return h.Groq.Generate(ctx, systemInstruction, contents, jsonMode)
 	}
 	return nil, errNoAIProvider
 }
 
 func (h *Handler) HasAI() bool {
-	return (h.AI != nil && h.AI.APIKey != "") || (h.OpenRouter != nil && h.OpenRouter.APIKey != "")
+	return h.Groq != nil && (len(h.Groq.APIKeys) > 0 || h.Groq.APIKey != "")
+}
+
+func (h *Handler) HasGemini() bool {
+	return h.Gemini != nil && (len(h.Gemini.APIKeys) > 0 || h.Gemini.APIKey != "")
+}
+
+func (h *Handler) HasOpenAI() bool {
+	return h.OpenAI != nil && h.OpenAI.Configured()
+}
+
+func (h *Handler) HasExa() bool {
+	return h.Exa != nil && h.Exa.Configured()
 }

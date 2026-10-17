@@ -19,6 +19,7 @@ type CatalogItem struct {
 	Name         string
 	Manufacturer string
 	Barcode      string
+	Estimated    bool
 	Calories     float64
 	Protein      float64
 	Fat          float64
@@ -54,7 +55,8 @@ func LoadCatalog(r io.Reader) (*Catalog, error) {
 			return nil, fmt.Errorf("read nutrition catalog row %d: %w", line, err)
 		}
 		value := func(key string) string { return strings.TrimSpace(row[columns[key]]) }
-		if value("bisa_disajikan") != "1" || value("basis_gizi") != "per_100g" || (value("kualitas") != "ok" && value("kualitas") != "natrium_dikoreksi") {
+		basis := value("basis_gizi")
+		if value("bisa_disajikan") != "1" || (basis != "per_100g" && basis != "per_100g_perkiraan" && basis != "tidak_pasti") || (value("kualitas") != "ok" && value("kualitas") != "natrium_dikoreksi") {
 			continue
 		}
 		name := value("name")
@@ -74,7 +76,8 @@ func LoadCatalog(r io.Reader) (*Catalog, error) {
 		}
 		item := CatalogItem{
 			Name: name, Manufacturer: value("manufacturer"), Barcode: value("barcode"),
-			Calories: calories, Protein: protein, Fat: fat, Carbs: carbs,
+			Estimated: basis != "per_100g",
+			Calories:  calories, Protein: protein, Fat: fat, Carbs: carbs,
 			Sugar: catalogOptionalNumber(value("sugar_g")), Sodium: catalogOptionalNumber(value("sodium_mg")),
 		}
 		if _, exists := catalog.byName[key]; !exists {
@@ -100,6 +103,18 @@ func (c *Catalog) Match(name, barcode string) *CatalogItem {
 	}
 	if item, ok := c.byName[normalizeCatalogName(name)]; ok {
 		return &item
+	}
+	key := normalizeCatalogName(name)
+	var best CatalogItem
+	bestLength := 0
+	for candidate, item := range c.byName {
+		if len(candidate) > bestLength && strings.HasPrefix(key, candidate+" ") {
+			best, bestLength = item, len(candidate)
+		}
+	}
+	if bestLength > 0 {
+		best.Estimated = true
+		return &best
 	}
 	return nil
 }

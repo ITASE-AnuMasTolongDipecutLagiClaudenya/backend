@@ -4,13 +4,13 @@ Monorepo lokal berisi dua proyek terpisah: frontend React di `nutrily/` dan back
 
 ## Backend
 
-1. Dari `backend/`, salin `.env.example` menjadi `.env`; isi kredensial Supabase dan `GEMINI_API_KEY` dari Google AI Studio.
-2. Jalankan `schema.sql` di Supabase SQL Editor.
+1. Dari `backend/`, salin `.env.example` menjadi `.env`; isi kredensial Supabase, key Gemini di `GEMINI_API_KEYS` untuk analisis gambar chat, key Groq di `GROQ_API_KEYS` untuk saran gizi dan chat, dan key OpenAI di `OPENAI_API_KEY` untuk OCR scan serta pencarian web saat estimasi gizi tak berkatalog. Pisahkan key multi dengan koma.
+2. Jalankan `schema.sql` di Supabase SQL Editor. Untuk database lama, jalankan `migrations/011_meal_nutrition_sources.sql` agar sumber gizi tersimpan di riwayat.
 3. Jalankan `go run ./cmd/api`.
 
-Frontend mengirim Supabase access token. API memvalidasi token via Supabase Auth sebelum mengakses data pengguna; Supabase RLS membatasi akses tabel. Backend memanggil Gemini untuk OCR dan chat.
+Frontend mengirim Supabase access token. API memvalidasi token via Supabase Auth sebelum mengakses data pengguna; Supabase RLS membatasi akses tabel. Backend memproses gambar dengan OpenAI untuk OCR, mencocokkan hasil ke katalog CSV lalu cache produk (barcode+variant), dan memakai pencarian web OpenAI untuk estimasi gizi tak berkatalog; lalu menggunakan Groq untuk saran gizi dan chat, dengan Gemini untuk analisis gambar chat.
 
-Default model `gemini-3.8-flash` (Free Tier tercantum di harga resmi Google; kuota dan ketersediaan dapat berubah).
+Model default: `gpt-4o-mini` untuk OCR dan pencarian web; `gemini-3.8-flash` untuk analisis gambar chat; `openai/gpt-oss-20b` untuk saran gizi dan jawaban chat. GPT-OSS 20B model production dan memiliki batas Free Plan.
 
 Endpoint: `/health`, `/api/profile`, `/api/dashboard`, `/api/meals`, `/api/scan`, `/api/chat`.
 

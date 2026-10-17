@@ -36,6 +36,8 @@ func (h *Handler) ServeAPI(w http.ResponseWriter, r *http.Request) {
 		h.CreateMeal(w, r, u)
 	case r.URL.Path == "/api/scan" && r.Method == "POST":
 		h.Scan(w, r, u)
+	case r.URL.Path == "/api/scan/nutrition" && r.Method == "POST":
+		h.EnrichNutrition(w, r, u)
 	case r.URL.Path == "/api/chat" && r.Method == "GET":
 		h.GetChat(w, r, u)
 	case r.URL.Path == "/api/conversations" && r.Method == "GET":

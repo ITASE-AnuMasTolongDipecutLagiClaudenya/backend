@@ -222,11 +222,15 @@ func (h *Handler) UpdateMealSessionName(w http.ResponseWriter, r *http.Request, 
 	rows, err := h.SB.Query(r.Context(), r.Header.Get("Authorization"), http.MethodPatch, "meals?"+supabase.UserFilter(u.ID)+"&"+filter, map[string]string{"scan_session_name": sessionName})
 	if err != nil {
 		log.Printf("meal session rename: %v", err)
+		if mealPolicyDenied(err) {
+			httpx.WriteError(w, 502, "Database menolak ubah nama sesi. Jalankan migrations/009_meal_history_actions.sql pada project Supabase yang dipakai aplikasi.")
+			return
+		}
 		httpx.WriteError(w, 502, "Gagal mengubah nama sesi")
 		return
 	}
 	if len(rows) == 0 {
-		httpx.WriteError(w, 404, "Sesi pemindaian tidak ditemukan")
+		httpx.WriteError(w, 404, "Sesi pemindaian tidak ditemukan atau tidak dapat diubah. Periksa policy ubah meals di Supabase.")
 		return
 	}
 	httpx.WriteJSON(w, 200, rows)
@@ -238,13 +242,26 @@ func (h *Handler) DeleteMeals(w http.ResponseWriter, r *http.Request, u middlewa
 		httpx.WriteError(w, 400, "ID sesi pemindaian atau makanan tidak valid")
 		return
 	}
-	_, err := h.SB.Query(r.Context(), r.Header.Get("Authorization"), http.MethodDelete, "meals", supabase.UserFilter(u.ID)+"&"+filter)
+	deleted, err := h.SB.Query(r.Context(), r.Header.Get("Authorization"), http.MethodDelete, "meals", supabase.UserFilter(u.ID)+"&"+filter)
 	if err != nil {
 		log.Printf("meal delete: %v", err)
+		if mealPolicyDenied(err) {
+			httpx.WriteError(w, 502, "Database menolak hapus catatan. Jalankan migrations/009_meal_history_actions.sql pada project Supabase yang dipakai aplikasi.")
+			return
+		}
 		httpx.WriteError(w, 502, "Gagal menghapus catatan makanan")
 		return
 	}
+	if len(deleted) == 0 {
+		httpx.WriteError(w, 404, "Catatan makanan tidak ditemukan atau tidak dapat dihapus. Periksa policy hapus meals di Supabase.")
+		return
+	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func mealPolicyDenied(err error) bool {
+	message := strings.ToLower(err.Error())
+	return strings.Contains(message, "42501") || strings.Contains(message, "permission denied")
 }
 
 func mealFilter(r *http.Request) (string, bool) {
@@ -279,11 +296,44 @@ func (h *Handler) CreateMeal(w http.ResponseWriter, r *http.Request, u middlewar
 		httpx.WriteError(w, 400, "Nama makanan terlalu panjang")
 		return
 	}
-	allowed := map[string]bool{"user_id": true, "name": true, "serving_size": true, "calories": true, "protein_g": true, "carbs_g": true, "fat_g": true, "sugar_g": true, "sodium_mg": true, "scan_session_id": true, "scan_session_name": true, "scan_mode": true}
+	allowed := map[string]bool{"user_id": true, "name": true, "serving_size": true, "calories": true, "protein_g": true, "carbs_g": true, "fat_g": true, "sugar_g": true, "sodium_mg": true, "nutrition_sources": true, "scan_session_id": true, "scan_session_name": true, "scan_mode": true}
 	for k := range body {
 		if !allowed[k] {
 			httpx.WriteError(w, 400, "Field makanan tidak dikenal: "+k)
 			return
+		}
+	}
+	if raw, exists := body["nutrition_sources"]; exists {
+		sources, ok := raw.([]any)
+		if !ok || len(sources) > 5 {
+			httpx.WriteError(w, 400, "Daftar sumber gizi tidak valid")
+			return
+		}
+		for _, rawSource := range sources {
+			source, ok := rawSource.(map[string]any)
+			if !ok {
+				httpx.WriteError(w, 400, "Sumber gizi tidak valid")
+				return
+			}
+			for key := range source {
+				if key != "url" && key != "title" {
+					httpx.WriteError(w, 400, "Field sumber gizi tidak dikenal: "+key)
+					return
+				}
+			}
+			link, ok := source["url"].(string)
+			parsed, err := url.Parse(link)
+			if !ok || len(link) > 2048 || err != nil || parsed.Scheme != "https" || parsed.Host == "" || parsed.User != nil {
+				httpx.WriteError(w, 400, "URL sumber gizi harus HTTPS")
+				return
+			}
+			if title, exists := source["title"]; exists {
+				value, ok := title.(string)
+				if !ok || utf8.RuneCountInString(value) > 200 {
+					httpx.WriteError(w, 400, "Judul sumber gizi tidak valid")
+					return
+				}
+			}
 		}
 	}
 	if id, exists := body["scan_session_id"]; exists {
