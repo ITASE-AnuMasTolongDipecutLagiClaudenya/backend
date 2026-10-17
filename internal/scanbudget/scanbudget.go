@@ -106,8 +106,10 @@ func NewQuota(dailyLimit, monthlyLimit int) *Quota {
 	}
 }
 
-func dayKey(t time.Time) string   { return t.Format("2006-01-02") }
-func monthKey(t time.Time) string { return t.Format("2006-01") }
+var wib = time.FixedZone("WIB", 7*60*60)
+
+func dayKey(t time.Time) string   { return t.In(wib).Format("2006-01-02") }
+func monthKey(t time.Time) string { return t.In(wib).Format("2006-01") }
 
 // Allow consumes one unit for user and reports whether a scan may proceed.
 // It returns false when either the daily or monthly limit is exhausted.

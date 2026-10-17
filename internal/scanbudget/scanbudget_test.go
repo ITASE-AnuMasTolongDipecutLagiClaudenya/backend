@@ -68,3 +68,15 @@ func TestQuotaMonthlyLimit(t *testing.T) {
 		t.Fatal("monthly limit should cap requests")
 	}
 }
+
+func TestDayKeyUsesWIB(t *testing.T) {
+	if got := dayKey(time.Date(2026, time.October, 18, 16, 59, 0, 0, time.UTC)); got != "2026-10-18" {
+		t.Fatalf("16:59 UTC is 23:59 WIB, want 2026-10-18, got %s", got)
+	}
+	if got := dayKey(time.Date(2026, time.October, 18, 17, 0, 0, 0, time.UTC)); got != "2026-10-19" {
+		t.Fatalf("17:00 UTC is 00:00 WIB, want 2026-10-19, got %s", got)
+	}
+	if got := monthKey(time.Date(2026, time.November, 1, 17, 0, 0, 0, time.UTC)); got != "2026-11" {
+		t.Fatalf("want 2026-11, got %s", got)
+	}
+}
