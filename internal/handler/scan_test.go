@@ -7,12 +7,12 @@ import (
 	"nutrily/backend/internal/nutrition"
 )
 
-// TestEstimatePipelineNestedGizi verifies the full estimate path preserves
-// nutrition from a nested gizi object and attaches the source URL so
-// mergeGroundedEstimate does not null the values.
+// TestEstimatePipelineNestedGizi verifies the estimate path flattens nested
+// gizi and keeps values. Model-supplied source_urls are intentionally dropped:
+// only real web_search citations are trusted.
 func TestEstimatePipelineNestedGizi(t *testing.T) {
 	fallbackResult := map[string]any{}
-	raw := `{"items":[{"_estimate_id":"0","name":"Lemon Tea","serving_size":"1 botol","gizi":{"calories":151,"protein_g":0,"carbs_g":37,"fat_g":0,"sugar_g":36,"sodium_mg":0},"source_urls":["https://nutritiondatalist.com/product/lemon-tea"]}]}`
+	raw := `{"items":[{"_estimate_id":"0","name":"Lemon Tea","serving_size":"1 botol","gizi":{"calories":151,"protein_g":0,"carbs_g":37,"fat_g":0,"sugar_g":36,"sodium_mg":0},"source_urls":["https://fake.example.com/hallucinated"]}]}`
 	if err := json.Unmarshal([]byte(raw), &fallbackResult); err != nil {
 		t.Fatal(err)
 	}
@@ -36,10 +36,10 @@ func TestEstimatePipelineNestedGizi(t *testing.T) {
 	}
 	item := merged[0]
 	if item["calories"] != float64(151) || item["carbs_g"] != float64(37) {
-		t.Fatalf("nutrition nulled despite source: %#v", item)
+		t.Fatalf("nutrition lost: %#v", item)
 	}
-	if len(item["sources"].([]map[string]string)) == 0 {
-		t.Fatalf("source URL should be attached: %#v", item["sources"])
+	if sources, _ := item["sources"].([]map[string]string); len(sources) != 0 {
+		t.Fatalf("model-supplied source_urls must be discarded, got %#v", sources)
 	}
 }
 
