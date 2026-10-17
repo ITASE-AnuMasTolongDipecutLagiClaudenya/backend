@@ -7,7 +7,7 @@ import (
 
 func TestEstimatePromptUsesOnlyUnmatchedItems(t *testing.T) {
 	prompt := estimatePrompt([]map[string]any{{"name": "Susu"}}, "label")
-	if !strings.Contains(prompt, "Susu") || !strings.Contains(prompt, "Item:") || !strings.Contains(prompt, "Google Search grounding") || strings.Contains(prompt, "Apify") {
+	if !strings.Contains(prompt, "Susu") || !strings.Contains(prompt, "Item:") || !strings.Contains(prompt, "perakitan gizi") || !strings.Contains(prompt, "mengarang") || strings.Contains(prompt, "Apify") {
 		t.Fatalf("estimatePrompt() omitted items or references old OCR: %q", prompt)
 	}
 }

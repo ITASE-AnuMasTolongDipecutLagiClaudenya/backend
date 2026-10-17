@@ -7,6 +7,8 @@ import (
 	"nutrily/backend/internal/gemini"
 	"nutrily/backend/internal/groq"
 	"nutrily/backend/internal/nutrition"
+	"nutrily/backend/internal/openai"
+	"nutrily/backend/internal/scanbudget"
 	"nutrily/backend/internal/supabase"
 	"nutrily/backend/internal/turnstile"
 )
@@ -17,15 +19,24 @@ type Handler struct {
 	SB               *supabase.Client
 	Gemini           *gemini.Client
 	Groq             *groq.Client
+	OpenAI           *openai.Client
 	TS               *turnstile.Client
 	Catalog          *nutrition.Catalog
 	CloudinaryCloud  string
 	CloudinaryKey    string
 	CloudinarySecret string
+	Store            *Store
 }
 
-func New(sb *supabase.Client, ai *gemini.Client, groqAI *groq.Client, ts *turnstile.Client, catalog *nutrition.Catalog, cloud, cloudKey, cloudSecret string) *Handler {
-	return &Handler{SB: sb, Gemini: ai, Groq: groqAI, TS: ts, Catalog: catalog, CloudinaryCloud: cloud, CloudinaryKey: cloudKey, CloudinarySecret: cloudSecret}
+// Store groups the process-local scan cost controls.
+type Store struct {
+	Cache        *scanbudget.Cache
+	Quota        *scanbudget.Quota
+	SearchMaxRes int
+}
+
+func New(sb *supabase.Client, ai *gemini.Client, groqAI *groq.Client, openaiAI *openai.Client, ts *turnstile.Client, catalog *nutrition.Catalog, cloud, cloudKey, cloudSecret string) *Handler {
+	return &Handler{SB: sb, Gemini: ai, Groq: groqAI, OpenAI: openaiAI, TS: ts, Catalog: catalog, CloudinaryCloud: cloud, CloudinaryKey: cloudKey, CloudinarySecret: cloudSecret}
 }
 
 func (h *Handler) GenerateAI(ctx context.Context, systemInstruction string, contents []any, jsonMode bool) (map[string]any, error) {
@@ -41,4 +52,8 @@ func (h *Handler) HasAI() bool {
 
 func (h *Handler) HasGemini() bool {
 	return h.Gemini != nil && (len(h.Gemini.APIKeys) > 0 || h.Gemini.APIKey != "")
+}
+
+func (h *Handler) HasOpenAI() bool {
+	return h.OpenAI != nil && h.OpenAI.Configured()
 }

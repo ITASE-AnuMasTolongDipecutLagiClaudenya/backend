@@ -39,8 +39,10 @@ Endpoint berikut dipanggil komponen aplikasi, bukan endpoint publik backend Nutr
 | `{SUPABASE_URL}/auth/v1/user` | Backend | Validasi access token |
 | `{SUPABASE_URL}/rest/v1/{profiles,meals,chat_messages,rpc/*}` | Backend | Baca/tulis data melalui Supabase REST dan RLS |
 | `https://challenges.cloudflare.com/turnstile/v0/siteverify` | Backend | Verifikasi token Turnstile |
-| `https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent` | Backend | OCR label/struk dan analisis gambar chat, `thinkingBudget: 0`; key diputar dari `GEMINI_API_KEYS` |
-| `https://api.groq.com/openai/v1/chat/completions` | Backend | Estimasi gizi, saran dan jawaban chat memakai `openai/gpt-oss-20b`; key diputar dari `GROQ_API_KEYS` |
+| `https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent` | Backend | Analisis gambar chat dan saran gizi, `thinkingBudget: 0`; key diputar dari `GEMINI_API_KEYS` |
+| `https://api.groq.com/openai/v1/chat/completions` | Backend | Saran gizi dan jawaban chat memakai `openai/gpt-oss-20b`; key diputar dari `GROQ_API_KEYS` |
+| `https://api.openai.com/v1/chat/completions` | Backend | OCR label/struk (`OPENAI_MODEL`, default `gpt-4o-mini`) |
+| `https://api.openai.com/v1/responses` | Backend | Pencarian web untuk estimasi gizi tak berkatalog (`web_search`) |
 | Supabase Auth OAuth/user endpoints | Frontend Supabase SDK | Login Google, session, pembaruan kata sandi |
 
 ### `GET /health`
@@ -170,9 +172,7 @@ Ubah nama sesi (`scan_session_name`) untuk semua catatan dalam sesi, atau satu c
 
 Hapus semua catatan dalam sesi atau satu catatan lama tanpa ID sesi.
 
-### `POST /api/scan`
-
-Scan label gizi atau struk. `multipart/form-data`: `image` wajib, JPG/PNG maksimum 8 MiB; `mode` opsional (`label` default atau `receipt`). Backend mencocokkan nama/barcode ke `data/gizi_lookup.csv` hanya pada baris `bisa_disajikan=1`, `basis_gizi=per_100g`, dan kualitas terpercaya. Hasil membawa `nutrition_source`: `catalog` untuk nilai CSV yang diskalakan ke porsi, `label` untuk angka yang terbaca dari label, atau `estimate` untuk fallback AI. Nilai yang tidak diketahui tetap `null`, bukan `0`. Respons `200`:
+Scan label gizi atau struk. `multipart/form-data`: `image` wajib, JPG/PNG maksimum 8 MiB; `mode` opsional (`label` default atau `receipt`). Urutan resolusi data gizi: (1) katalog `data/gizi_lookup.csv` pada baris `bisa_disajikan=1`, `basis_gizi=per_100g`, kualitas terpercaya; (2) cache produk (berbasis barcode+variant, TTL `PRODUCT_CACHE_MAX_AGE`); (3) OCR label; (4) pencarian web OpenAI `web_search` untuk estimasi tak berkatalog. Hasil membawa `nutrition_source`: `catalog` untuk nilai CSV yang diskalakan ke porsi, `label` untuk angka yang terbaca dari label, atau `estimate` untuk fallback AI. Nilai yang tidak diketahui tetap `null`, bukan `0`. Respons `200`:
 
 ```json
 {
@@ -193,7 +193,8 @@ Scan label gizi atau struk. `multipart/form-data`: `image` wajib, JPG/PNG maksim
 }
 ```
 
-`category` hanya dikembalikan jika dikenali. Mode struk memfilter kategori ke `makanan`, `minuman`, `buah`. Scan tidak menyimpan meal otomatis. Error khusus: `400` gambar/mode tidak valid, `503` AI tidak dikonfigurasi, `502` pemindaian gagal.
+`category` hanya dikembalikan jika dikenali. Mode struk memfilter kategori ke `makanan`, `minuman`, `buah`. Scan tidak menyimpan meal otomatis. Error khusus: `400` gambar/mode tidak valid, `429` kuota harian/bulanan tercapai (`SCAN_DAILY_QUOTA`/`SCAN_MONTHLY_QUOTA`), `503` AI tidak dikonfigurasi (`OPENAI_API_KEY`), `502` pemindaian gagal.
+
 
 ### `GET /api/chat?conversation_id=<UUID>`
 

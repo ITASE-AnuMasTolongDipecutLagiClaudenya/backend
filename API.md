@@ -4,13 +4,13 @@ Monorepo lokal berisi dua proyek terpisah: frontend React di `nutrily/` dan back
 
 ## Backend
 
-1. Dari `backend/`, salin `.env.example` menjadi `.env`; isi kredensial Supabase, enam key Gemini di `GEMINI_API_KEYS` untuk OCR dan estimasi gizi berbasis Google Search grounding, serta enam key Groq di `GROQ_API_KEYS` untuk saran gizi dan chat. Pisahkan key dengan koma.
+1. Dari `backend/`, salin `.env.example` menjadi `.env`; isi kredensial Supabase, key Gemini di `GEMINI_API_KEYS` untuk analisis gambar chat, key Groq di `GROQ_API_KEYS` untuk saran gizi dan chat, dan key OpenAI di `OPENAI_API_KEY` untuk OCR scan serta pencarian web saat estimasi gizi tak berkatalog. Pisahkan key multi dengan koma.
 2. Jalankan `schema.sql` di Supabase SQL Editor. Untuk database lama, jalankan `migrations/011_meal_nutrition_sources.sql` agar sumber gizi tersimpan di riwayat.
 3. Jalankan `go run ./cmd/api`.
 
-Frontend mengirim Supabase access token. API memvalidasi token via Supabase Auth sebelum mengakses data pengguna; Supabase RLS membatasi akses tabel. Backend memproses gambar langsung dengan Gemini untuk OCR, memakai Gemini Google Search grounding untuk estimasi tak berkatalog dan menyimpan tautan sumber terverifikasi, lalu menggunakan Groq untuk saran gizi dan chat.
+Frontend mengirim Supabase access token. API memvalidasi token via Supabase Auth sebelum mengakses data pengguna; Supabase RLS membatasi akses tabel. Backend memproses gambar dengan OpenAI untuk OCR, mencocokkan hasil ke katalog CSV lalu cache produk (barcode+variant), dan memakai pencarian web OpenAI untuk estimasi gizi tak berkatalog; lalu menggunakan Groq untuk saran gizi dan chat, dengan Gemini untuk analisis gambar chat.
 
-Model default: `gemini-3.8-flash` untuk OCR dan analisis gambar chat; `openai/gpt-oss-20b` untuk saran gizi dan jawaban chat. GPT-OSS 20B model production, bukan Preview, dan memiliki batas Free Plan. Pada Developer Plan, tarif resminya $0.075/1M input tokens dan $0.30/1M output tokens.
+Model default: `gpt-4o-mini` untuk OCR dan pencarian web; `gemini-3.8-flash` untuk analisis gambar chat; `openai/gpt-oss-20b` untuk saran gizi dan jawaban chat. GPT-OSS 20B model production dan memiliki batas Free Plan.
 
 Endpoint: `/health`, `/api/profile`, `/api/dashboard`, `/api/meals`, `/api/scan`, `/api/chat`.
 
