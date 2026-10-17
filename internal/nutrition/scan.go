@@ -90,6 +90,50 @@ func NormalizeCategory(v any) string {
 	}
 }
 
+// normalizeNutritionAliases maps common alternative nutrition field names
+// (including a nested gizi/`gizi_per_sajian` object some models emit) onto the
+// canonical flat keys, so values survive even when the model drifts from the
+// requested schema.
+func normalizeNutritionAliases(item map[string]any) {
+	if nested, ok := item["gizi_per_sajian"].(map[string]any); ok {
+		for k, v := range nested {
+			if _, exists := item[k]; !exists {
+				item[k] = v
+			}
+		}
+		delete(item, "gizi_per_sajian")
+	}
+	if nested, ok := item["gizi"].(map[string]any); ok {
+		for k, v := range nested {
+			if _, exists := item[k]; !exists {
+				item[k] = v
+			}
+		}
+		delete(item, "gizi")
+	}
+	alias := map[string]string{
+		"kalori":       "calories",
+		"energi":       "calories",
+		"energy":       "calories",
+		"protein":      "protein_g",
+		"karbohidrat":  "carbs_g",
+		"karbo":        "carbs_g",
+		"carbohydrate": "carbs_g",
+		"lemak":        "fat_g",
+		"fat":          "fat_g",
+		"gula":         "sugar_g",
+		"natrium":      "sodium_mg",
+	}
+	for from, to := range alias {
+		if v, ok := item[from]; ok {
+			if _, exists := item[to]; !exists {
+				item[to] = v
+			}
+			delete(item, from)
+		}
+	}
+}
+
 func NormalizeScanItems(result map[string]any, mode string) []map[string]any {
 	items := []map[string]any{}
 	collect := func(entry any) {
@@ -97,6 +141,7 @@ func NormalizeScanItems(result map[string]any, mode string) []map[string]any {
 		if !ok {
 			return
 		}
+		normalizeNutritionAliases(item)
 		name, _ := item["name"].(string)
 		name = strings.TrimSpace(name)
 		if name == "" || IsNonFood(name) {
