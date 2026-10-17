@@ -18,11 +18,6 @@ const (
 	responsesEndpoint = "https://api.openai.com/v1/responses"
 )
 
-// searchInstructions is a terse directive for the Responses API search step.
-// The full cost-efficiency rules and output schema live in the input prompt
-// (estimatePrompt) to avoid duplicating instructions and wasting input tokens.
-const searchInstructions = `Balas hanya satu objek JSON valid sesuai skema di input. Tanpa Markdown, code fence, atau teks di luar JSON.`
-
 // Client talks to the OpenAI REST API (chat completions for vision/OCR and
 // the Responses API for web-search-grounded nutrition lookups). All methods
 // are safe for concurrent use; API keys rotate round-robin across requests.
@@ -76,28 +71,6 @@ func (c *Client) GenerateImage(ctx context.Context, prompt string, data []byte, 
 		payload["response_format"] = map[string]string{"type": "json_object"}
 	}
 	return c.postChat(ctx, payload, jsonMode)
-}
-
-// GenerateSearch grounds nutrition lookups with web search. It returns a
-// normalized {"items":[…]}: the model's returned items, with search citations
-// extracted from the Responses API output.
-func (c *Client) GenerateSearch(ctx context.Context, prompt string) (map[string]any, error) {
-	payload := map[string]any{
-		"model":             c.Model,
-		"instructions":      searchInstructions,
-		"input":             prompt,
-		"max_output_tokens": 1500,
-		"temperature":       0.2,
-	}
-	body, err := json.Marshal(payload)
-	if err != nil {
-		return nil, err
-	}
-	result, err := c.do(ctx, http.MethodPost, responsesEndpoint, body, "application/json")
-	if err != nil {
-		return nil, err
-	}
-	return parseResponses(result)
 }
 
 func (c *Client) postChat(ctx context.Context, payload map[string]any, jsonMode bool) (map[string]any, error) {
@@ -184,61 +157,6 @@ func parseChatCompletion(data []byte, jsonMode bool) (map[string]any, error) {
 		return nil, errors.New("hasil OCR terpotong karena melebihi batas token; coba foto dengan lebih sedikit item atau pecah menjadi beberapa foto")
 	}
 	return parseJSONText(text)
-}
-
-// parseResponses extracts the model's final text and its web-search citations
-// from the Responses API output.
-func parseResponses(data []byte) (map[string]any, error) {
-	var result struct {
-		Output []struct {
-			Type    string `json:"type"`
-			Content []struct {
-				Type        string `json:"type"`
-				Text        string `json:"text"`
-				Annotations []struct {
-					Type  string `json:"type"`
-					URL   string `json:"url"`
-					Title string `json:"title"`
-				} `json:"annotations"`
-			} `json:"content"`
-		} `json:"output"`
-	}
-	if err := json.Unmarshal(data, &result); err != nil {
-		return nil, errors.New("respons pencarian OpenAI tidak valid")
-	}
-	var text strings.Builder
-	var sources []map[string]string
-	seen := map[string]bool{}
-	for _, out := range result.Output {
-		if out.Type == "web_search_call" {
-			continue
-		}
-		if out.Type == "message" {
-			for _, c := range out.Content {
-				if c.Type == "output_text" {
-					text.WriteString(c.Text)
-				}
-				for _, a := range c.Annotations {
-					if a.Type != "url_citation" || a.URL == "" || seen[a.URL] {
-						continue
-					}
-					seen[a.URL] = true
-					sources = append(sources, map[string]string{"url": a.URL, "title": a.Title})
-				}
-			}
-		}
-	}
-	if strings.TrimSpace(text.String()) == "" {
-		return nil, errors.New("OpenAI tidak menghasilkan hasil pencarian")
-	}
-	parsed, err := parseJSONText(text.String())
-	if err != nil {
-		return nil, err
-	}
-	if len(sources) > 0 {
-		parsed["_search_sources"] = sources
-	}
-	return parsed, nil
 }
 
 func parseJSONText(text string) (map[string]any, error) {

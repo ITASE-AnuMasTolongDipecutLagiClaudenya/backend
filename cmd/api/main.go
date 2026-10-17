@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"nutrily/backend/internal/config"
+	"nutrily/backend/internal/exa"
 	"nutrily/backend/internal/gemini"
 	"nutrily/backend/internal/groq"
 	"nutrily/backend/internal/handler"
@@ -39,12 +40,14 @@ func main() {
 	geminiHTTPClient := &http.Client{Timeout: 55 * time.Second}
 	groqHTTPClient := &http.Client{Timeout: 2 * time.Minute}
 	openaiHTTPClient := &http.Client{Timeout: 60 * time.Second}
+	exaHTTPClient := &http.Client{Timeout: 30 * time.Second}
 	sb := &supabase.Client{BaseURL: cfg.SupabaseURL, AnonKey: cfg.AnonKey, HTTP: httpClient}
 	ai := &gemini.Client{APIKeys: cfg.GeminiKeys, Model: cfg.GeminiModel, HTTP: geminiHTTPClient}
 	groqAI := &groq.Client{APIKeys: cfg.GroqKeys, Model: cfg.GroqModel, HTTP: groqHTTPClient}
 	openaiAI := &openai.Client{APIKey: cfg.OpenAIKey, Model: cfg.OpenAIModel, HTTP: openaiHTTPClient}
+	exaAI := &exa.Client{APIKey: cfg.ExaKey, HTTP: exaHTTPClient, NumResults: cfg.ExaNumResults, TrustedDomains: cfg.ExaTrustedDomains}
 	ts := &turnstile.Client{Secret: cfg.TurnstileSecret, HTTP: httpClient}
-	apiHandler := handler.New(sb, ai, groqAI, openaiAI, ts, catalog, cfg.CloudinaryCloud, cfg.CloudinaryKey, cfg.CloudinarySecret)
+	apiHandler := handler.New(sb, ai, groqAI, openaiAI, exaAI, ts, catalog, cfg.CloudinaryCloud, cfg.CloudinaryKey, cfg.CloudinarySecret)
 	apiHandler.Store = &handler.Store{
 		Cache:        scanbudget.NewCache(cfg.ProductCacheMaxAge),
 		Quota:        scanbudget.NewQuota(cfg.ScanDailyQuota, cfg.ScanMonthlyQuota),

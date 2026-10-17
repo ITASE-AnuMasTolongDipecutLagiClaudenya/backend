@@ -9,20 +9,23 @@ import (
 )
 
 type Config struct {
-	SupabaseURL      string
-	AnonKey          string
-	GeminiKeys       []string
-	GeminiModel      string
-	GroqKeys         []string
-	GroqModel        string
-	OpenAIKey        string
-	OpenAIModel      string
-	CloudinaryCloud  string
-	CloudinaryKey    string
-	CloudinarySecret string
-	Port             string
-	TurnstileSecret  string
-	Origins          map[string]bool
+	SupabaseURL       string
+	AnonKey           string
+	GeminiKeys        []string
+	GeminiModel       string
+	GroqKeys          []string
+	GroqModel         string
+	OpenAIKey         string
+	OpenAIModel       string
+	ExaKey            string
+	ExaNumResults     int
+	ExaTrustedDomains []string
+	CloudinaryCloud   string
+	CloudinaryKey     string
+	CloudinarySecret  string
+	Port              string
+	TurnstileSecret   string
+	Origins           map[string]bool
 
 	// Spam/budget controls for the OCR + search pipeline.
 	SearchMaxResults   int
@@ -42,6 +45,9 @@ func Load() Config {
 		GroqModel:          env("GROQ_MODEL", "openai/gpt-oss-20b"),
 		OpenAIKey:          os.Getenv("OPENAI_API_KEY"),
 		OpenAIModel:        env("OPENAI_MODEL", "gpt-4o-mini"),
+		ExaKey:             os.Getenv("EXA_API_KEY"),
+		ExaNumResults:      envInt("EXA_NUM_RESULTS", 3),
+		ExaTrustedDomains:  keys("EXA_TRUSTED_DOMAINS", ""),
 		CloudinaryCloud:    strings.TrimSpace(os.Getenv("CLOUDINARY_CLOUD_NAME")),
 		CloudinaryKey:      strings.TrimSpace(os.Getenv("CLOUDINARY_API_KEY")),
 		CloudinarySecret:   strings.TrimSpace(os.Getenv("CLOUDINARY_API_SECRET")),

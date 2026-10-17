@@ -1,67 +1,43 @@
 package handler
 
 import (
-	"encoding/json"
 	"testing"
 
 	"nutrily/backend/internal/nutrition"
 )
 
-// TestEstimatePipelineNestedGizi verifies the estimate path flattens nested
-// gizi and keeps values. Model-supplied source_urls are intentionally dropped:
-// only real web_search citations are trusted.
-func TestEstimatePipelineNestedGizi(t *testing.T) {
-	fallbackResult := map[string]any{}
-	raw := `{"items":[{"_estimate_id":"0","name":"Lemon Tea","serving_size":"1 botol","gizi":{"calories":151,"protein_g":0,"carbs_g":37,"fat_g":0,"sugar_g":36,"sodium_mg":0},"source_urls":["https://fake.example.com/hallucinated"]}]}`
-	if err := json.Unmarshal([]byte(raw), &fallbackResult); err != nil {
-		t.Fatal(err)
+func TestUnverifiedEstimatesPreserveKnownNutrition(t *testing.T) {
+	items := unverifiedEstimates([]map[string]any{{"name": "Susu", "calories": float64(100)}})
+	if len(items) != 1 || items[0]["name"] != "Susu" || items[0]["calories"] != float64(100) {
+		t.Fatalf("unverified estimate = %#v", items)
 	}
-
-	h := &Handler{Store: &Store{SearchMaxRes: 5}}
-
-	estimates := nutrition.NormalizeScanItems(fallbackResult, "receipt")
-	if len(estimates) != 1 {
-		t.Fatalf("expected 1 item, got %d", len(estimates))
-	}
-	if estimates[0]["calories"] != float64(151) {
-		t.Fatalf("nested gizi calories not flattened: %#v", estimates[0])
-	}
-
-	h.attachOpenAISources(estimates, fallbackResult)
-
-	requested := identifyEstimateItems([]map[string]any{{"name": "Lemon Tea", "serving_size": "1 botol"}})
-	merged := mergeGroundedEstimateBatch(estimates, requested)
-	if len(merged) != 1 {
-		t.Fatalf("expected 1 merged item, got %d", len(merged))
-	}
-	item := merged[0]
-	if item["calories"] != float64(151) || item["carbs_g"] != float64(37) {
-		t.Fatalf("nutrition lost: %#v", item)
-	}
-	if sources, _ := item["sources"].([]map[string]string); len(sources) != 0 {
-		t.Fatalf("model-supplied source_urls must be discarded, got %#v", sources)
+	if sources, ok := items[0]["sources"].([]map[string]string); !ok || len(sources) != 0 {
+		t.Fatalf("unverified estimate must carry no sources: %#v", items[0]["sources"])
 	}
 }
 
-// TestEstimatePipelineNestedGiziWithoutSource reproduces the real scan case:
-// the model returns nested gizi but an empty source_urls array. With no
-// source, mergeGroundedEstimate currently nulls every value.
-func TestEstimatePipelineNestedGiziWithoutSource(t *testing.T) {
-	fallbackResult := map[string]any{}
-	raw := `{"items":[{"_estimate_id":"0","name":"Lemon Tea","gizi":{"calories":8,"protein_g":0.2,"carbs_g":1.5,"fat_g":0,"sugar_g":0.8,"sodium_mg":3},"source_urls":[]}]}`
-	if err := json.Unmarshal([]byte(raw), &fallbackResult); err != nil {
-		t.Fatal(err)
+func TestHasMissingNutrition(t *testing.T) {
+	complete := map[string]any{"calories": 1.0, "protein_g": 1.0, "carbs_g": 1.0, "fat_g": 1.0}
+	if hasMissingNutrition(complete) {
+		t.Fatal("complete item should not report missing nutrition")
 	}
-	h := &Handler{Store: &Store{SearchMaxRes: 5}}
-	estimates := nutrition.NormalizeScanItems(fallbackResult, "receipt")
-	if len(estimates) != 1 || estimates[0]["calories"] != float64(8) {
-		t.Fatalf("nested gizi should flatten even without source: %#v", estimates)
+	if !hasMissingNutrition(map[string]any{"calories": 1.0}) {
+		t.Fatal("partial item should report missing nutrition")
 	}
-	h.attachOpenAISources(estimates, fallbackResult)
-	requested := identifyEstimateItems([]map[string]any{{"name": "Lemon Tea"}})
-	merged := mergeGroundedEstimateBatch(estimates, requested)
-	t.Logf("merged without source: %#v", merged[0])
-	if merged[0]["calories"] != float64(8) {
-		t.Fatalf("nutrition was nulled despite valid model values: %#v", merged[0])
+	if !hasAnyNutrition(map[string]any{"sodium_mg": 1.0}) {
+		t.Fatal("sodium should count as nutrition")
+	}
+}
+
+func TestNestedNutritionContainersFlatten(t *testing.T) {
+	result := map[string]any{"items": []any{
+		map[string]any{
+			"name": "Lemon Tea",
+			"gizi": map[string]any{"calories": 8, "protein_g": 0.2, "carbs_g": 1.5, "fat_g": 0.0, "sugar_g": 0.8, "sodium_mg": 3},
+		},
+	}}
+	items := nutrition.NormalizeScanItems(result, "receipt")
+	if len(items) != 1 || items[0]["calories"] != float64(8) {
+		t.Fatalf("nested gizi not flattened: %#v", items)
 	}
 }

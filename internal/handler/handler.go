@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"nutrily/backend/internal/exa"
 	"nutrily/backend/internal/gemini"
 	"nutrily/backend/internal/groq"
 	"nutrily/backend/internal/nutrition"
@@ -20,6 +21,7 @@ type Handler struct {
 	Gemini           *gemini.Client
 	Groq             *groq.Client
 	OpenAI           *openai.Client
+	Exa              *exa.Client
 	TS               *turnstile.Client
 	Catalog          *nutrition.Catalog
 	CloudinaryCloud  string
@@ -35,8 +37,8 @@ type Store struct {
 	SearchMaxRes int
 }
 
-func New(sb *supabase.Client, ai *gemini.Client, groqAI *groq.Client, openaiAI *openai.Client, ts *turnstile.Client, catalog *nutrition.Catalog, cloud, cloudKey, cloudSecret string) *Handler {
-	return &Handler{SB: sb, Gemini: ai, Groq: groqAI, OpenAI: openaiAI, TS: ts, Catalog: catalog, CloudinaryCloud: cloud, CloudinaryKey: cloudKey, CloudinarySecret: cloudSecret}
+func New(sb *supabase.Client, ai *gemini.Client, groqAI *groq.Client, openaiAI *openai.Client, exaAI *exa.Client, ts *turnstile.Client, catalog *nutrition.Catalog, cloud, cloudKey, cloudSecret string) *Handler {
+	return &Handler{SB: sb, Gemini: ai, Groq: groqAI, OpenAI: openaiAI, Exa: exaAI, TS: ts, Catalog: catalog, CloudinaryCloud: cloud, CloudinaryKey: cloudKey, CloudinarySecret: cloudSecret}
 }
 
 func (h *Handler) GenerateAI(ctx context.Context, systemInstruction string, contents []any, jsonMode bool) (map[string]any, error) {
@@ -56,4 +58,8 @@ func (h *Handler) HasGemini() bool {
 
 func (h *Handler) HasOpenAI() bool {
 	return h.OpenAI != nil && h.OpenAI.Configured()
+}
+
+func (h *Handler) HasExa() bool {
+	return h.Exa != nil && h.Exa.Configured()
 }
