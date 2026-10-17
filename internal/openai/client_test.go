@@ -59,3 +59,22 @@ func TestParseResponsesExtractsSources(t *testing.T) {
 		t.Fatalf("expected one extracted source, got %#v", got["_search_sources"])
 	}
 }
+
+func TestExtractJSONWithProsePreambleAndFence(t *testing.T) {
+	text := "Berikut adalah format JSON:\n\n```json\n{\"items\":[{\"name\":\"KANZLR\"}]}\n```\nSemoga membantu."
+	got, err := parseJSONText(text)
+	if err != nil {
+		t.Fatalf("parseJSONText with prose+fence = %v", err)
+	}
+	if got["items"] == nil {
+		t.Fatalf("expected items, got %#v", got)
+	}
+}
+
+func TestExtractJSONWithLeadingProseOnly(t *testing.T) {
+	text := `Tentu, ini hasilnya: {"items":[{"name":"Teh"}]} selesai.`
+	got, err := parseJSONText(text)
+	if err != nil || got["items"] == nil {
+		t.Fatalf("parseJSONText with prose = %#v, %v", got, err)
+	}
+}

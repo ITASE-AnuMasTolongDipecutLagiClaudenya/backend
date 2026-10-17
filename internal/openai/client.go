@@ -68,9 +68,9 @@ func (c *Client) GenerateImage(ctx context.Context, prompt string, data []byte, 
 		"model":       c.Model,
 		"messages":    []any{map[string]any{"role": "user", "content": content}},
 		"temperature": 0.2,
-		// Cost cap: OCR output is compact; ~500 tokens is plenty for the
-		// item list.
-		"max_completion_tokens": 500,
+		// OCR must emit every receipt line, and long receipts need headroom.
+		// 500 tokens truncated real receipts mid-JSON (finish_reason=length).
+		"max_completion_tokens": 2000,
 	}
 	if jsonMode {
 		payload["response_format"] = map[string]string{"type": "json_object"}
@@ -86,8 +86,7 @@ func (c *Client) GenerateSearch(ctx context.Context, prompt string) (map[string]
 		"model":             c.Model,
 		"instructions":      searchInstructions,
 		"input":             prompt,
-		"tools":             []any{map[string]any{"type": "web_search"}},
-		"max_output_tokens": 500,
+		"max_output_tokens": 1500,
 		"temperature":       0.2,
 	}
 	body, err := json.Marshal(payload)
@@ -165,7 +164,8 @@ func (c *Client) do(ctx context.Context, method, endpoint string, body []byte, c
 func parseChatCompletion(data []byte, jsonMode bool) (map[string]any, error) {
 	var result struct {
 		Choices []struct {
-			Message struct {
+			FinishReason string `json:"finish_reason"`
+			Message      struct {
 				Content string `json:"content"`
 			} `json:"message"`
 		} `json:"choices"`
@@ -179,6 +179,9 @@ func parseChatCompletion(data []byte, jsonMode bool) (map[string]any, error) {
 	text := strings.TrimSpace(result.Choices[0].Message.Content)
 	if !jsonMode {
 		return map[string]any{"answer": text}, nil
+	}
+	if result.Choices[0].FinishReason == "length" {
+		return nil, errors.New("hasil OCR terpotong karena melebihi batas token; coba foto dengan lebih sedikit item atau pecah menjadi beberapa foto")
 	}
 	return parseJSONText(text)
 }
@@ -239,7 +242,7 @@ func parseResponses(data []byte) (map[string]any, error) {
 }
 
 func parseJSONText(text string) (map[string]any, error) {
-	cleaned := stripFence(text)
+	cleaned := extractJSON(text)
 	var parsed map[string]any
 	if err := json.Unmarshal([]byte(cleaned), &parsed); err == nil {
 		return parsed, nil
@@ -251,11 +254,31 @@ func parseJSONText(text string) (map[string]any, error) {
 	return nil, errors.New("respons OpenAI bukan JSON valid; tidak dicoba ulang")
 }
 
-func stripFence(text string) string {
+// extractJSON pulls the JSON payload out of model text that may include a
+// prose preamble and/or a ```json fence. Models occasionally preface the
+// object even in JSON mode, which previously broke OCR parsing.
+func extractJSON(text string) string {
 	trimmed := strings.TrimSpace(text)
-	for _, prefix := range []string{"```json", "```JSON", "```"} {
-		trimmed = strings.TrimPrefix(trimmed, prefix)
+	// Drop a fenced block's opening line, if present.
+	if idx := strings.Index(trimmed, "```"); idx >= 0 {
+		rest := trimmed[idx+3:]
+		rest = strings.TrimPrefix(rest, "json")
+		rest = strings.TrimPrefix(rest, "JSON")
+		rest = strings.TrimSpace(rest)
+		if end := strings.LastIndex(rest, "```"); end >= 0 {
+			rest = rest[:end]
+		}
+		if candidate := strings.TrimSpace(rest); candidate != "" {
+			trimmed = candidate
+		}
 	}
-	trimmed = strings.TrimSuffix(strings.TrimSpace(trimmed), "```")
+	// If there is still leading prose, cut from the first object/array opener.
+	if first := strings.IndexAny(trimmed, "{["); first > 0 {
+		trimmed = trimmed[first:]
+	}
+	// Trim trailing prose after the final closer.
+	if last := strings.LastIndexAny(trimmed, "}]"); last >= 0 && last < len(trimmed)-1 {
+		trimmed = trimmed[:last+1]
+	}
 	return strings.TrimSpace(trimmed)
 }

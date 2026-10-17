@@ -11,7 +11,10 @@ var nonFoodKeywords = []string{
 	"tunai", "cash", "debit", "kredit", "credit", "qr", "qris", "layanan", "service", "kantong",
 	"sabun", "sampo", "shampoo", "deterjen", "detergen", "pasta gigi", "sikat gigi", "tisu", "tissue",
 	"popok", "diapers", "pembalut", "rokok", "cigarette", "pulsa", "voucher", "token", "parfum",
-	"lotion", "kosmetik", "makeup", "skincare",
+	"lotion", "kosmetik", "makeup", "skincare", "tusuk gigi", "gunting", "korek", "baterai", "battery",
+	"amplop", "pulpen", "pensil", "kertas", "plastik", "kantong plastik", "pembersih", "pencuci",
+	"pewangi", "deodoran", "odol", "hansplast", "masker", "hand sanitizer", "sanitizer",
+	"piring", "gelas", "sendok", "garpu", "sedotan", "kipas", "lampu", "kabel",
 }
 
 func hasReceiptKeyword(name, keyword string) bool {
@@ -95,21 +98,16 @@ func NormalizeCategory(v any) string {
 // canonical flat keys, so values survive even when the model drifts from the
 // requested schema.
 func normalizeNutritionAliases(item map[string]any) {
-	if nested, ok := item["gizi_per_sajian"].(map[string]any); ok {
-		for k, v := range nested {
-			if _, exists := item[k]; !exists {
-				item[k] = v
+	// Models alternate between nested containers for the same fields.
+	for _, key := range []string{"gizi_per_sajian", "gizi", "nutrition", "nutrition_facts", "nutrition_per_serving"} {
+		if nested, ok := item[key].(map[string]any); ok {
+			for k, v := range nested {
+				if _, exists := item[k]; !exists {
+					item[k] = v
+				}
 			}
+			delete(item, key)
 		}
-		delete(item, "gizi_per_sajian")
-	}
-	if nested, ok := item["gizi"].(map[string]any); ok {
-		for k, v := range nested {
-			if _, exists := item[k]; !exists {
-				item[k] = v
-			}
-		}
-		delete(item, "gizi")
 	}
 	alias := map[string]string{
 		"kalori":       "calories",
@@ -144,6 +142,18 @@ func NormalizeScanItems(result map[string]any, mode string) []map[string]any {
 		normalizeNutritionAliases(item)
 		name, _ := item["name"].(string)
 		name = strings.TrimSpace(name)
+		// Receipts abbreviate product names ("KANZLR BAKSO HOT"). Keep the
+		// printed name for display and use the LLM-expanded guess for lookup.
+		if guess, _ := item["product_guess"].(string); strings.TrimSpace(guess) != "" {
+			if name != "" {
+				item["raw_name"] = name
+			}
+			name = strings.TrimSpace(guess)
+		}
+		delete(item, "product_guess")
+		if confidence, _ := item["name_confidence"].(string); confidence != "high" && confidence != "medium" && confidence != "low" {
+			delete(item, "name_confidence")
+		}
 		if name == "" || IsNonFood(name) {
 			return
 		}
@@ -182,7 +192,7 @@ func NormalizeScanItems(result map[string]any, mode string) []map[string]any {
 		return items
 	}
 	item := map[string]any{}
-	for _, k := range []string{"name", "_estimate_id", "category", "serving_size", "calories", "protein_g", "carbs_g", "fat_g", "sugar_g", "sodium_mg", "sources", "note", "mode", "user_id"} {
+	for _, k := range []string{"name", "raw_name", "name_confidence", "_estimate_id", "category", "serving_size", "calories", "protein_g", "carbs_g", "fat_g", "sugar_g", "sodium_mg", "sources", "note", "mode", "user_id"} {
 		if v, ok := result[k]; ok {
 			item[k] = v
 		}
