@@ -54,21 +54,21 @@ func (c *Client) Search(ctx context.Context, query string) ([]Result, error) {
 	if numResults <= 0 {
 		numResults = 3
 	}
-
-	// Prefer an allowlisted search. If the allowlist yields nothing for a
-	// product, fall back once to an unfiltered search and keep only HTTPS
-	// hosts, so niche products still get a source.
+	// TrustedDomains is a retrieval preference sent to Exa, not a hard local
+	// gate: a result from another host is still usable as long as it is HTTPS.
+	// Only when the preferred search returns nothing do we retry without the
+	// domain hint, so niche products still get a source.
 	results, err := c.search(ctx, query, numResults, c.TrustedDomains)
 	if err != nil {
 		return nil, err
 	}
-	filtered := filterTrusted(results, c.TrustedDomains)
+	filtered := httpsOnly(results)
 	if len(filtered) == 0 && len(c.TrustedDomains) > 0 {
 		results, err = c.search(ctx, query, numResults, nil)
 		if err != nil {
 			return nil, err
 		}
-		filtered = filterTrusted(results, nil)
+		filtered = httpsOnly(results)
 	}
 	return filtered, nil
 }
@@ -118,39 +118,17 @@ func (c *Client) search(ctx context.Context, query string, numResults int, domai
 	return parsed.Results, nil
 }
 
-// filterTrusted keeps HTTPS results whose host matches the allowlist (or any
-// host when the allowlist is empty). Wildcards such as "*.go.id" are honored.
-func filterTrusted(results []Result, domains []string) []Result {
+// httpsOnly drops results that are not served over HTTPS. Domain trust is
+// handled by Exa's ranking (includeDomains hint); a non-allowlisted HTTPS
+// page is still an acceptable citation.
+func httpsOnly(results []Result) []Result {
 	kept := make([]Result, 0, len(results))
 	for _, r := range results {
 		parsed, err := url.Parse(r.URL)
 		if err != nil || parsed.Scheme != "https" || parsed.Host == "" {
 			continue
 		}
-		if len(domains) > 0 && !hostAllowed(parsed.Hostname(), domains) {
-			continue
-		}
 		kept = append(kept, r)
 	}
 	return kept
-}
-
-func hostAllowed(host string, domains []string) bool {
-	host = strings.ToLower(strings.TrimSuffix(host, "."))
-	for _, domain := range domains {
-		domain = strings.ToLower(strings.TrimSpace(domain))
-		if domain == "" {
-			continue
-		}
-		if strings.HasPrefix(domain, "*.") {
-			if strings.HasSuffix(host, strings.TrimPrefix(domain, "*")) {
-				return true
-			}
-			continue
-		}
-		if host == domain || strings.HasSuffix(host, "."+domain) {
-			return true
-		}
-	}
-	return false
 }

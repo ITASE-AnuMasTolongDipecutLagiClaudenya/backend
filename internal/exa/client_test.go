@@ -54,16 +54,15 @@ func TestSearchRequiresKey(t *testing.T) {
 	}
 }
 
-func TestFilterTrustedRejectsHTTPAndUntrusted(t *testing.T) {
+func TestHTTPSOnlyDropsHTTP(t *testing.T) {
 	results := []Result{
 		{URL: "http://fatsecret.co.id/x"},
 		{URL: "https://fatsecret.co.id/k"},
 		{URL: "https://randomblog.com/nutrition"},
-		{URL: "https://id.openfoodfacts.org/produk/1"},
 	}
-	got := filterTrusted(results, []string{"fatsecret.co.id", "id.openfoodfacts.org"})
+	got := httpsOnly(results)
 	if len(got) != 2 {
-		t.Fatalf("expected 2 trusted https results, got %d: %#v", len(got), got)
+		t.Fatalf("expected 2 https results, got %d: %#v", len(got), got)
 	}
 	for _, r := range got {
 		if r.URL[:8] != "https://" {
@@ -72,22 +71,9 @@ func TestFilterTrustedRejectsHTTPAndUntrusted(t *testing.T) {
 	}
 }
 
-func TestFilterTrustedWithoutAllowlistKeepsAnyHTTPS(t *testing.T) {
-	results := []Result{{URL: "http://a.com"}, {URL: "https://b.com"}}
-	got := filterTrusted(results, nil)
-	if len(got) != 1 || got[0].URL != "https://b.com" {
-		t.Fatalf("expected https-only fallback, got %#v", got)
-	}
-}
-
-func TestHostAllowedWildcard(t *testing.T) {
-	if !hostAllowed("gizi.kemenkes.go.id", []string{"*.go.id"}) {
-		t.Fatal("wildcard subdomain should match")
-	}
-	if hostAllowed("evil.com", []string{"*.go.id"}) {
-		t.Fatal("unrelated host must not match")
-	}
-	if !hostAllowed("fatsecret.co.id", []string{"fatsecret.co.id"}) {
-		t.Fatal("exact host should match")
+func TestHTTPSOnlyKeepsAnyTrustedHTTPSHost(t *testing.T) {
+	results := []Result{{URL: "https://www.fatsecret.co.id/a"}}
+	if len(httpsOnly(results)) != 1 {
+		t.Fatal("https result from any host should be kept")
 	}
 }
